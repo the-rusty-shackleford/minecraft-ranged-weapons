@@ -17,6 +17,9 @@
  */
 package com.nfx.rangedweapons.api;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,13 +32,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * valid, and a consumer that meets a name it does not know treats it as
  * opaque rather than as an error. The same shape as NeoForge's own
  * {@code ItemAbility}, for the same reason: a Java enum cannot be extended
- * and a registry would freeze the set at load.
+ * and a registry would freeze the set at load. In a datapack it is a plain
+ * string.
  *
  * <p>Immutable. RI: {@code name} matches {@code [a-z0-9_]+}, and at most one
  * instance exists per name (interned through {@code BY_NAME}).
  */
 public final class WeaponClass {
     private static final Map<String, WeaponClass> BY_NAME = new ConcurrentHashMap<>();
+
+    /** The datapack form: the bare name. A malformed name fails the decode, naming itself. */
+    public static final Codec<WeaponClass> CODEC = Codec.STRING.comapFlatMap(WeaponClass::parse, WeaponClass::name);
 
     /** A pistol, revolver: quick, short. */
     public static final WeaponClass SIDEARM = get("sidearm");
@@ -72,8 +79,7 @@ public final class WeaponClass {
      */
     public static WeaponClass get(String name) {
         if (!isValidName(name)) {
-            throw new IllegalArgumentException(
-                    "weapon class names are [a-z0-9_]+, was \"" + name + "\"");
+            throw new IllegalArgumentException(malformed(name));
         }
         return BY_NAME.computeIfAbsent(name, WeaponClass::new);
     }
@@ -111,6 +117,14 @@ public final class WeaponClass {
     @Override
     public String toString() {
         return name;
+    }
+
+    private static DataResult<WeaponClass> parse(String name) {
+        return isValidName(name) ? DataResult.success(get(name)) : DataResult.error(() -> malformed(name));
+    }
+
+    private static String malformed(String name) {
+        return "weapon class names are [a-z0-9_]+, was \"" + name + "\"";
     }
 
     // equals and hashCode are identity: instances are interned, so two

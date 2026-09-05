@@ -17,6 +17,10 @@
  */
 package com.nfx.rangedweapons.api;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 /**
  * Everything a ranged AI needs to fight with one specific weapon stack right
  * now. Immutable.
@@ -37,7 +41,9 @@ package com.nfx.rangedweapons.api;
  * {@code engagementRange > 0} and finite; {@code projectileSpeed > 0} and
  * finite; {@code projectileLifetimeTicks >= 1}. Enforced in the constructor
  * so a profile that fails it is refused where it is built, with the field
- * named, rather than discovered as a mob that never fires.
+ * named, rather than discovered as a mob that never fires. The codec carries
+ * the same bounds, so a datapack that fails it is refused at load with the
+ * field named.
  *
  * @param capacity                rounds in a full magazine
  * @param reloadTicksPerRound     ticks to load one round; a full reload is this times the capacity
@@ -52,6 +58,25 @@ package com.nfx.rangedweapons.api;
 public record WeaponStats(int capacity, int reloadTicksPerRound, int fireRateTicks, float damage,
                           int projectilesPerShot, float spread, float engagementRange,
                           float projectileSpeed, int projectileLifetimeTicks) {
+
+    /**
+     * The datapack shape: nine required fields in snake_case, each bounded as
+     * the RI is. A map codec so a profile can embed the fields flat.
+     */
+    public static final MapCodec<WeaponStats> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            Codec.intRange(1, Integer.MAX_VALUE).fieldOf("capacity").forGetter(WeaponStats::capacity),
+            Codec.intRange(0, Integer.MAX_VALUE).fieldOf("reload_ticks_per_round").forGetter(WeaponStats::reloadTicksPerRound),
+            Codec.intRange(1, Integer.MAX_VALUE).fieldOf("fire_rate_ticks").forGetter(WeaponStats::fireRateTicks),
+            Codec.floatRange(0.0f, Float.MAX_VALUE).fieldOf("damage").forGetter(WeaponStats::damage),
+            Codec.intRange(1, Integer.MAX_VALUE).fieldOf("projectiles_per_shot").forGetter(WeaponStats::projectilesPerShot),
+            Codec.floatRange(0.0f, Float.MAX_VALUE).fieldOf("spread").forGetter(WeaponStats::spread),
+            Codec.floatRange(Float.MIN_VALUE, Float.MAX_VALUE).fieldOf("engagement_range").forGetter(WeaponStats::engagementRange),
+            Codec.floatRange(Float.MIN_VALUE, Float.MAX_VALUE).fieldOf("projectile_speed").forGetter(WeaponStats::projectileSpeed),
+            Codec.intRange(1, Integer.MAX_VALUE).fieldOf("projectile_lifetime_ticks").forGetter(WeaponStats::projectileLifetimeTicks)
+    ).apply(i, WeaponStats::new));
+
+    /** {@link #MAP_CODEC} as a standalone object codec. */
+    public static final Codec<WeaponStats> CODEC = MAP_CODEC.codec();
 
     /**
      * @throws IllegalArgumentException naming the first field that violates the RI

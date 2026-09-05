@@ -17,6 +17,8 @@
  */
 package com.nfx.rangedweapons.api;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
@@ -26,9 +28,15 @@ import java.util.Optional;
  * stats, what it eats, and what it sounds like. Immutable.
  *
  * <p>Items and sounds are referenced by id and resolved at use rather than
- * held as registry objects, so a profile can be built -- and, later, decoded
- * from a datapack -- without a bootstrapped registry. An id that resolves to
- * nothing degrades: no ammo drops, no sound plays.
+ * held as registry objects, so a profile can be decoded from a datapack
+ * without a bootstrapped registry. An id that resolves to nothing degrades --
+ * no ammo drops, no sound plays -- and is reported once per reload by the
+ * protocol mod, so the loud failure is not lost, only moved.
+ *
+ * <p>The datapack shape is flat: {@code "class"} (optional, default
+ * {@code unclassified}), the nine {@link WeaponStats} fields, and the four
+ * optional ids {@code "ammo"}, {@code "magazine"}, {@code "shot_sound"},
+ * {@code "far_shot_sound"}.
  *
  * <p>RI: no field is null. Enforced in the constructor; the {@code Optional}s
  * express absence, a null {@code Optional} is a bug.
@@ -43,6 +51,16 @@ import java.util.Optional;
 public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
                             Optional<ResourceLocation> ammoItem, Optional<ResourceLocation> magazineItem,
                             Optional<ResourceLocation> shotSound, Optional<ResourceLocation> farShotSound) {
+
+    /** The datapack shape described above. */
+    public static final Codec<WeaponProfile> CODEC = RecordCodecBuilder.create(i -> i.group(
+            WeaponClass.CODEC.optionalFieldOf("class", WeaponClass.UNCLASSIFIED).forGetter(WeaponProfile::weaponClass),
+            WeaponStats.MAP_CODEC.forGetter(WeaponProfile::defaults),
+            ResourceLocation.CODEC.optionalFieldOf("ammo").forGetter(WeaponProfile::ammoItem),
+            ResourceLocation.CODEC.optionalFieldOf("magazine").forGetter(WeaponProfile::magazineItem),
+            ResourceLocation.CODEC.optionalFieldOf("shot_sound").forGetter(WeaponProfile::shotSound),
+            ResourceLocation.CODEC.optionalFieldOf("far_shot_sound").forGetter(WeaponProfile::farShotSound)
+    ).apply(i, WeaponProfile::new));
 
     /**
      * @throws IllegalArgumentException if any field is null
