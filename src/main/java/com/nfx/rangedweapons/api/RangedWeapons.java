@@ -17,12 +17,14 @@
  */
 package com.nfx.rangedweapons.api;
 
+import com.nfx.rangedweapons.fallback.ProfiledWeapon;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.registries.datamaps.DataMapType;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -35,9 +37,58 @@ import java.util.Optional;
  * them, later entries for the same item winning, and an entry may be guarded
  * with a {@code neoforge:mod_loaded} condition so one file can describe guns
  * from several mods without failing to load when one is absent.
+ *
+ * <p>{@link #resolve} is the one question a consumer asks of a stack: "is
+ * this a weapon, and who operates it?". It is one explicit function with its
+ * tiers written out in precedence order, rather than a set of providers
+ * whose order depends on cross-mod event dispatch, so the answer is the
+ * same whichever mods are loaded. This is the one place the contract package
+ * reaches down into an implementation: the fallback tier is part of the
+ * protocol's promise, not an optional extra.
  */
 public final class RangedWeapons {
     private RangedWeapons() {}
+
+    /**
+     * effects: returns the weapon behind {@code stack}, or null if it is
+     * empty or no tier claims it. Currently one tier: an item with a
+     * {@link #WEAPONS} profile is operated by the fallback
+     * {@link ProfiledWeapon}. Two lookups, no allocation on the steady
+     * state: cheap enough to call every tick.
+     *
+     * @param stack the stack in question
+     * @return its weapon, or null
+     */
+    @Nullable
+    public static RangedWeapon resolve(ItemStack stack) {
+        if (stack.isEmpty() || stack.getItemHolder().getData(WEAPONS) == null) {
+            return null;
+        }
+        return ProfiledWeapon.of(stack.getItem());
+    }
+
+    /**
+     * effects: returns whether {@link #resolve} would find a weapon
+     *
+     * @param stack the stack in question
+     * @return whether it is a weapon
+     */
+    public static boolean isWeapon(ItemStack stack) {
+        return resolve(stack) != null;
+    }
+
+    /**
+     * effects: returns the ammo store behind {@code stack}, or null if it
+     * holds no rounds. Every weapon is one; the protocol defines no
+     * detachable magazines of its own, so today this is {@link #resolve}.
+     *
+     * @param stack the stack in question
+     * @return its store, or null
+     */
+    @Nullable
+    public static AmmoStore ammoStore(ItemStack stack) {
+        return resolve(stack);
+    }
 
     /** The protocol's namespace, for its own ids. */
     public static final String NAMESPACE = "rangedweapons";

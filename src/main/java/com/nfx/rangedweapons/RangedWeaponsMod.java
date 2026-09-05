@@ -19,6 +19,7 @@ package com.nfx.rangedweapons;
 
 import com.mojang.logging.LogUtils;
 import com.nfx.rangedweapons.api.RangedWeapons;
+import com.nfx.rangedweapons.fallback.Fallback;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -41,9 +42,11 @@ import java.util.function.Predicate;
  * <p>The contract lives in {@code com.nfx.rangedweapons.api}. This class is
  * the mod's presence in the loader -- a real mod rather than a bare library,
  * because the protocol registers things of its own: the {@code weapons} data
- * map type that lets a datapack describe any item as a weapon. Consumers nest
- * this jar inside theirs, and the loader deduplicates it to one copy, so those
- * registrations happen exactly once however many mods carry it.
+ * map type that lets a datapack describe any item as a weapon, and the
+ * fallback tier's round-count component and bullet entity that make such an
+ * item fire with no gun mod present. Consumers nest this jar inside theirs,
+ * and the loader deduplicates it to one copy, so those registrations happen
+ * exactly once however many mods carry it.
  *
  * <p>Profiles reference items and sounds by id and resolve them at use, which
  * keeps the codec free of registries but gives up the loud failure a bad id
@@ -57,6 +60,7 @@ public final class RangedWeaponsMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public RangedWeaponsMod(IEventBus modBus, ModContainer container) {
+        Fallback.register(modBus);
         modBus.addListener(RangedWeaponsMod::registerDataMaps);
         // A game-bus event, not a mod-bus one.
         NeoForge.EVENT_BUS.addListener(RangedWeaponsMod::onDataMapsUpdated);

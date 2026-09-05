@@ -1,0 +1,193 @@
+/*
+ * Ranged Weapons - a protocol between gun mods and the mobs that use them.
+ * Copyright (C) 2026 nfx and contributors
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License
+ * for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+package com.nfx.rangedweapons.fallback;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.Vec3;
+
+/**
+ * The fallback tier's projectile: a straight, gravity-free tracer that
+ * deals a fixed damage to the first thing it hits and is gone after a fixed
+ * number of ticks.
+ *
+ * <p>Built on {@link AbstractArrow} for its movement, collision, owner and
+ * deflection handling, and for the renderer contract, with three of its
+ * behaviours replaced. Vanilla arrows deal {@code ceil(|velocity| *
+ * baseDamage)} and lose one percent of their speed every tick, so a
+ * profile's damage would arrive rounded and diminished; this bullet keeps
+ * its speed constant and deals its damage as written. Vanilla arrows stick
+ * in blocks and lie there for a minute; this one is removed on impact. And
+ * nothing can pick it up.
+ *
+ * <p>RI: {@code damage >= 0} and finite; {@code speed > 0} and finite;
+ * {@code lifetimeTicks >= 1}. The loader-side constructor starts at the
+ * harmless minimum -- no damage, gone next tick -- and the saved values
+ * overwrite it, so a bullet that survives a world reload keeps flying.
+ */
+public final class ProfiledBullet extends AbstractArrow {
+
+    private static final String TAG_DAMAGE = "HitDamage";
+    private static final String TAG_SPEED = "Speed";
+    private static final String TAG_LIFETIME = "LifetimeTicks";
+
+    private float damage = 0.0f;
+    private float speed = 1.0f;
+    private int lifetimeTicks = 1;
+
+    /**
+     * The constructor the entity type and the client use. Harmless defaults;
+     * see the RI.
+     *
+     * @param type  this entity's type
+     * @param level the level
+     */
+    public ProfiledBullet(EntityType<? extends ProfiledBullet> type, Level level) {
+        super(type, level);
+        this.pickup = Pickup.DISALLOWED;
+        this.setNoGravity(true);
+    }
+
+    /**
+     * A bullet ready to be shot. The caller positions and shoots it.
+     *
+     * <p>requires: {@code weapon} is not empty; {@code damage >= 0} and
+     * finite; {@code speed > 0} and finite; {@code lifetimeTicks >= 1}<br>
+     * effects: a bullet owned by {@code shooter} at its eye, not yet moving,
+     * carrying {@code weapon}'s enchantments the way an arrow carries its
+     * bow's
+     *
+     * @param type          this entity's type
+     * @param shooter       who fired; the bullet's owner
+     * @param level         the level to live in
+     * @param weapon        the stack it was fired from
+     * @param damage        what a hit deals
+     * @param speed         blocks per tick, held constant
+     * @param lifetimeTicks ticks before an unspent bullet is removed
+     */
+    public ProfiledBullet(EntityType<? extends ProfiledBullet> type, LivingEntity shooter, Level level,
+                          ItemStack weapon, float damage, float speed, int lifetimeTicks) {
+        super(type, shooter, level, ItemStack.EMPTY, weapon);
+        if (!(damage >= 0) || Float.isInfinite(damage)) {
+            throw new IllegalArgumentException("damage must be finite and >= 0, was " + damage);
+        }
+        if (!(speed > 0) || Float.isInfinite(speed)) {
+            throw new IllegalArgumentException("speed must be finite and > 0, was " + speed);
+        }
+        if (lifetimeTicks < 1) {
+            throw new IllegalArgumentException("lifetimeTicks must be >= 1, was " + lifetimeTicks);
+        }
+        this.damage = damage;
+        this.speed = speed;
+        this.lifetimeTicks = lifetimeTicks;
+        this.pickup = Pickup.DISALLOWED;
+        this.setNoGravity(true);
+    }
+
+    /** What a hit deals. */
+    public float damage() {
+        return damage;
+    }
+
+    /** Ticks before an unspent bullet is removed. */
+    public int lifetimeTicks() {
+        return lifetimeTicks;
+    }
+
+    /**
+     * Vanilla's tick, then two corrections on the server: the drag vanilla
+     * applied after moving is undone so the next move is at full speed
+     * again, and the bullet is removed once it has lived its lifetime.
+     */
+    @Override
+    public void tick() {
+        super.tick();
+        if (this.level().isClientSide || this.isRemoved()) {
+            return;
+        }
+        if (this.tickCount >= this.lifetimeTicks) {
+            this.discard();
+            return;
+        }
+        Vec3 velocity = this.getDeltaMovement();
+        double length = velocity.length();
+        if (length > 1e-6) {
+            this.setDeltaMovement(velocity.scale(this.speed / length));
+        }
+    }
+
+    /**
+     * Deals exactly {@link #damage()} to the entity hit, credits the owner
+     * with the hit for its AI's sake, and is gone.
+     */
+    @Override
+    protected void onHitEntity(EntityHitResult result) {
+        Entity target = result.getEntity();
+        Entity owner = this.getOwner();
+        DamageSource source = this.damageSources().arrow(this, owner != null ? owner : this);
+        if (target.hurt(source, this.damage) && owner instanceof LivingEntity livingOwner) {
+            livingOwner.setLastHurtMob(target);
+        }
+        this.discard();
+    }
+
+    /**
+     * Lets the block react as it would to any projectile -- a target block
+     * lights up, a bell rings -- and is gone. Deliberately not vanilla's
+     * arrow behaviour, which sticks, plays a sound and waits a minute.
+     */
+    @Override
+    protected void onHitBlock(BlockHitResult result) {
+        BlockState state = this.level().getBlockState(result.getBlockPos());
+        state.onProjectileHit(this.level(), state, result, this);
+        this.discard();
+    }
+
+    /** Never dropped, never picked up: it is not an item. */
+    @Override
+    protected ItemStack getDefaultPickupItem() {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        tag.putFloat(TAG_DAMAGE, this.damage);
+        tag.putFloat(TAG_SPEED, this.speed);
+        tag.putInt(TAG_LIFETIME, this.lifetimeTicks);
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        // Clamped back into the RI: a hand-edited or truncated tag must not
+        // produce a bullet that can never be removed or that heals.
+        this.damage = Math.max(0.0f, tag.getFloat(TAG_DAMAGE));
+        this.speed = Math.max(Float.MIN_NORMAL, tag.getFloat(TAG_SPEED));
+        this.lifetimeTicks = Math.max(1, tag.getInt(TAG_LIFETIME));
+    }
+}

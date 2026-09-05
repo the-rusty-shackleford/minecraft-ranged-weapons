@@ -1,0 +1,39 @@
+{
+  "values": {
+    "minecraft:stick": {
+      "class": "sidearm",
+      "capacity": 4,
+      "reload_ticks_per_round": 5,
+      "fire_rate_ticks": 10,
+      "damage": 5.0,
+      "projectiles_per_shot": 1,
+      "spread": 0.0,
+      "engagement_range": 16.0,
+      "projectile_speed": 2.0,
+      "projectile_lifetime_ticks": 100
+    },
+    "minecraft:blaze_rod": {
+      "capacity": 1,
+      "reload_ticks_per_round": 5,
+      "fire_rate_ticks": 10,
+      "damage": 1.0,
+      "projectiles_per_shot": 1,
+      "spread": 0.0,
+      "engagement_range": 16.0,
+      "projectile_speed": 0.5,
+      "projectile_lifetime_ticks": 10
+    },
+    "minecraft:bone": {
+      "class": "shotgun",
+      "capacity": 2,
+      "reload_ticks_per_round": 5,
+      "fire_rate_ticks": 10,
+      "damage": 1.0,
+      "projectiles_per_shot": 3,
+      "spread": 0.1,
+      "engagement_range": 8.0,
+      "projectile_speed": 0.5,
+      "projectile_lifetime_ticks": 10
+    }
+  }
+}

@@ -23,9 +23,24 @@ repositories {
 
 // Layering here differs from a consumer's: the contract's value types carry
 // their own DataFixerUpper codecs, so `main` needs the modding classpath and
-// `test` gets it too -- for the codec classes and ResourceLocation, not for
-// a game. Nothing boots Minecraft: neoForge.unitTest is deliberately not
-// enabled, and a test that needs a bootstrapped registry does not belong here.
+// `test` gets it too -- for the codec classes, Vec3 and ResourceLocation,
+// not for a game. Nothing in `test` boots Minecraft: neoForge.unitTest is
+// deliberately not enabled. What needs a live registry or a level -- the
+// fallback tier's component, entity and bullet -- is tested in `gametest`,
+// on a real headless server, against the real backend.
+sourceSets {
+    gametest
+}
+
+// In a dev run SharedConstants.IS_RUNNING_IN_IDE is true, so the structure
+// template manager reads gametest templates from <cwd>/gameteststructures/
+// rather than from a resource pack. The templates are kept under devtools/
+// and copied into place before the run.
+var copyGameTestStructures = tasks.register("copyGameTestStructures", Copy) {
+    from "devtools/gameteststructures"
+    into "run/gameteststructures"
+}
+
 neoForge {
     version = project.neo_version
 
@@ -42,6 +57,19 @@ neoForge {
             server()
             programArgument '--nogui'
         }
+        // A dedicated server with NeoForge's gametest framework enabled; it
+        // runs every @GameTest in the enabled namespaces and exits with the
+        // number of failed required tests. ModDevGradle has no helper for
+        // this type the way it has client()/server(); `type` maps straight
+        // onto the run type name NeoForge publishes.
+        gameTestServer {
+            type = "gameTestServer"
+            sourceSet = sourceSets.gametest
+            // NeoForge 21.1 reads the `neoforge.` prefix; the Forge-era
+            // `forge.enabledGameTestNamespaces` is silently ignored.
+            systemProperty 'neoforge.enabledGameTestNamespaces', mod_id
+            taskBefore copyGameTestStructures
+        }
         configureEach {
             logLevel = org.slf4j.event.Level.DEBUG
         }
@@ -50,13 +78,25 @@ neoForge {
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            sourceSet(sourceSets.gametest)
         }
     }
 
     addModdingDependenciesTo(sourceSets.test)
+    addModdingDependenciesTo(sourceSets.gametest)
+}
+
+// The gametest run's classpath is gametest.runtimeClasspath. Giving it main's
+// classes (below) is not the same as giving it main's dependencies; inherit
+// the configurations so both arrive.
+configurations {
+    gametestImplementation.extendsFrom implementation
+    gametestRuntimeOnly.extendsFrom runtimeOnly
 }
 
 dependencies {
+    gametestImplementation sourceSets.main.output
+
     // Plain JUnit 5. Gradle 9 no longer injects the platform launcher, so it
     // is declared. These exact versions are the ones in the local Gradle cache.
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
@@ -67,6 +107,34 @@ dependencies {
 tasks.named('test', Test) {
     // -ea is on by default for Test tasks; rep invariants rely on it.
     useJUnitPlatform()
+}
+
+// The gametest server's exit code is the number of failed *required* tests,
+// which is also zero when no test ran at all -- a mod the loader refused, a
+// namespace typo, an empty holder class. So the exit code is not the
+// assertion. The assertion is the framework's own summary line in the log,
+// and the task fails without it. `check` runs the gate unless asked not to
+// (`-PskipGameTests`) for fast iteration on the pure tests.
+tasks.named('runGameTestServer') { task ->
+    // Resolved now, not in the action: the configuration cache forbids the
+    // action from touching the project.
+    def logFile = layout.projectDirectory.file('run/logs/latest.log').asFile
+    task.doLast {
+        def text = logFile.exists() ? logFile.text : ''
+        if (text =~ /Missing or unsupported mandatory|Mod loading has failed/) {
+            throw new GradleException("gametest: the loader refused a mod; see ${logFile}")
+        }
+        def passed = (text =~ /All (\d+) required tests passed/)
+        if (!passed.find()) {
+            throw new GradleException("gametest: no 'required tests passed' line in ${logFile}")
+        }
+        task.logger.lifecycle("gametest: all ${passed.group(1)} required tests passed")
+    }
+}
+if (!project.hasProperty('skipGameTests')) {
+    tasks.named('check') {
+        dependsOn 'runGameTestServer'
+    }
 }
 
 // Consumers compile against and nest this artifact. Until a real Maven
