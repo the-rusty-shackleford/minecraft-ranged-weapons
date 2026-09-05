@@ -31,21 +31,31 @@ because on a mob the look angle is body yaw and lags the head while strafing.
 A consumer asks one question of a stack, `RangedWeapons.resolve(stack)`, and
 gets back the `RangedWeapon` that operates it or null. The answer comes from
 tiers in a fixed precedence, written out in that one function rather than
-left to event dispatch order:
+left to event dispatch order. **Code that knows the item beats data
+describing it** -- the precedence NeoForge itself uses for an item's own burn
+time over the furnace-fuels data map.
 
-1. **A profile.** Any datapack can describe any item in the data map
-   `rangedweapons:weapons`, at `data/<namespace>/data_maps/item/weapons.json`.
+1. **A capability.** A gun mod -- or a bridge on its behalf -- implements
+   `RangedWeapon` and registers it on its items with
+   `RegisterCapabilitiesEvent.registerItem(RangedWeapons.WEAPON, provider, items...)`.
+   Its own projectiles, ammunition items and effects: native fidelity. A
+   provider may return null for a stack it declines, and the next tier
+   answers. `RangedWeapons.AMMO_STORE` is the same for something that holds
+   rounds without being a weapon, a detachable magazine.
+2. **A profile.** Any datapack can describe any item in the data map
+   `rangedweapons:weapons`, at `data/rangedweapons/data_maps/item/weapons.json`.
    No code. Entries from every pack merge, and an entry may carry a
    `neoforge:mod_loaded` condition so one file can cover guns from several
-   mods without breaking when one is absent. An item with a profile is
-   operated by the **fallback tier**: `ProfiledWeapon` keeps its round count
-   in the `rangedweapons:rounds` component and fires `ProfiledBullet`, a
-   straight, gravity-free tracer that deals the profile's damage exactly and
-   is gone after its lifetime. That is a working weapon with no gun mod
-   present at all.
-2. *(next)* **A capability**, so a gun mod -- or a bridge on its behalf -- can
-   supply its own projectiles, ammunition items and effects for native
-   fidelity. Code that knows the item beats data describing it.
+   mods without breaking when one is absent. An item with a profile and no
+   provider is operated by the **fallback tier**: `ProfiledWeapon` keeps its
+   round count in the `rangedweapons:rounds` component and fires
+   `ProfiledBullet`, a straight, gravity-free tracer that deals the profile's
+   damage exactly and is gone after its lifetime. That is a working weapon
+   with no gun mod present at all.
+
+A natively supported gun still wants a profile: it is where a consumer reads
+the class, the ammunition to drop and the sounds to play, and where a pack
+retunes spread and range without touching the gun mod.
 
 A profile's shape is flat: an optional `class`, the nine `WeaponStats` fields
 in snake_case, and four optional ids -- `ammo`, `magazine`, `shot_sound`,
@@ -84,11 +94,13 @@ Two tiers, both run by `./gradlew check` (and so by `build`):
 - `./gradlew test` -- plain JUnit against everything pure: the value types,
   the codecs, the spread function. Nothing boots Minecraft. Partitions are
   written at the top of each test class.
-- `./gradlew runGameTestServer` -- the fallback tier on a real headless
-  server: resolution, rounds on the stack, a bullet hitting for exactly the
+- `./gradlew runGameTestServer` -- the tiers on a real headless server.
+  Precedence against real registrations: the gametest source set registers
+  the capabilities on a few vanilla items the way a gun mod would, and ships
+  its own `weapons.json` giving others profiles. The fallback tier end to
+  end: resolution, rounds on the stack, a bullet hitting for exactly the
   profile's damage, expiring on time, and every projectile of a multi-shot
-  launched. The gametest source set ships its own `weapons.json` giving three
-  vanilla items profiles. **The server's exit code is not the assertion** --
+  launched. **The server's exit code is not the assertion** --
   it is also zero when no test ran -- so the task reads the framework's own
   "All N required tests passed" line from `run/logs/latest.log` and fails
   without it. `-PskipGameTests` leaves it out of `check` for fast iteration

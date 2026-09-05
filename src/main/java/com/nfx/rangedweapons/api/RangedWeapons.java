@@ -23,6 +23,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.capabilities.ItemCapability;
 import net.neoforged.neoforge.registries.datamaps.DataMapType;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,38 +34,64 @@ import java.util.Optional;
  *
  * <p>{@link #WEAPONS} is the data map that lets a datapack describe any item
  * as a weapon with no code at all. Every mod and pack ships its entries at
- * {@code data/<namespace>/data_maps/item/weapons.json}; the loader merges
+ * {@code data/rangedweapons/data_maps/item/weapons.json}; the loader merges
  * them, later entries for the same item winning, and an entry may be guarded
  * with a {@code neoforge:mod_loaded} condition so one file can describe guns
  * from several mods without failing to load when one is absent.
+ *
+ * <p>{@link #WEAPON} is the capability a gun mod -- or a bridge on its
+ * behalf -- registers on its items to operate them natively: its own
+ * projectiles, ammunition and effects. {@link #AMMO_STORE} is the same for
+ * anything that holds rounds without being a weapon, a detachable magazine.
  *
  * <p>{@link #resolve} is the one question a consumer asks of a stack: "is
  * this a weapon, and who operates it?". It is one explicit function with its
  * tiers written out in precedence order, rather than a set of providers
  * whose order depends on cross-mod event dispatch, so the answer is the
- * same whichever mods are loaded. This is the one place the contract package
- * reaches down into an implementation: the fallback tier is part of the
- * protocol's promise, not an optional extra.
+ * same whichever mods are loaded. The capability beats the profile, always:
+ * code that knows the item beats data describing it, the precedence NeoForge
+ * itself uses for an item's own burn time over the furnace-fuels data map.
+ * This is the one place the contract package reaches down into an
+ * implementation: the fallback tier is part of the protocol's promise, not
+ * an optional extra.
  */
 public final class RangedWeapons {
     private RangedWeapons() {}
 
     /**
+     * The native tier. A provider registered on an item through
+     * {@code RegisterCapabilitiesEvent.registerItem} answers for that item
+     * ahead of any profile; a provider may return null for a stack it
+     * declines, and the profile tier is then consulted.
+     */
+    public static final ItemCapability<RangedWeapon, Void> WEAPON =
+            ItemCapability.createVoid(id("weapon"), RangedWeapon.class);
+
+    /** As {@link #WEAPON}, for something that holds rounds and is not a weapon. */
+    public static final ItemCapability<AmmoStore, Void> AMMO_STORE =
+            ItemCapability.createVoid(id("ammo_store"), AmmoStore.class);
+
+    /**
      * effects: returns the weapon behind {@code stack}, or null if it is
-     * empty or no tier claims it. Currently one tier: an item with a
-     * {@link #WEAPONS} profile is operated by the fallback
-     * {@link ProfiledWeapon}. Two lookups, no allocation on the steady
-     * state: cheap enough to call every tick.
+     * empty or no tier claims it: the {@link #WEAPON} capability if a
+     * provider answers, else the fallback {@link ProfiledWeapon} if the item
+     * has a {@link #WEAPONS} profile. A capability dispatch and a holder
+     * lookup, no allocation on the steady state: cheap enough to call every
+     * tick.
      *
      * @param stack the stack in question
      * @return its weapon, or null
      */
     @Nullable
     public static RangedWeapon resolve(ItemStack stack) {
-        if (stack.isEmpty() || stack.getItemHolder().getData(WEAPONS) == null) {
+        if (stack.isEmpty()) {
             return null;
         }
-        return ProfiledWeapon.of(stack.getItem());
+        RangedWeapon provided = stack.getCapability(WEAPON);
+        if (provided != null) {
+            return provided;
+        }
+        return stack.getItemHolder().getData(WEAPONS) == null ? null : ProfiledWeapon.of(stack.getItem());
     }
 
     /**
@@ -79,15 +106,20 @@ public final class RangedWeapons {
 
     /**
      * effects: returns the ammo store behind {@code stack}, or null if it
-     * holds no rounds. Every weapon is one; the protocol defines no
-     * detachable magazines of its own, so today this is {@link #resolve}.
+     * holds no rounds: the {@link #AMMO_STORE} capability if a provider
+     * answers, else the weapon itself, since every weapon is one. The
+     * protocol defines no detachable magazines of its own.
      *
      * @param stack the stack in question
      * @return its store, or null
      */
     @Nullable
     public static AmmoStore ammoStore(ItemStack stack) {
-        return resolve(stack);
+        if (stack.isEmpty()) {
+            return null;
+        }
+        AmmoStore provided = stack.getCapability(AMMO_STORE);
+        return provided != null ? provided : resolve(stack);
     }
 
     /** The protocol's namespace, for its own ids. */

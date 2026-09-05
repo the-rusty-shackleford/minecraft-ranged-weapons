@@ -34,6 +34,17 @@
       "engagement_range": 8.0,
       "projectile_speed": 0.5,
       "projectile_lifetime_ticks": 10
+    },
+    "minecraft:feather": {
+      "capacity": 1,
+      "reload_ticks_per_round": 5,
+      "fire_rate_ticks": 10,
+      "damage": 1.0,
+      "projectiles_per_shot": 1,
+      "spread": 0.0,
+      "engagement_range": 8.0,
+      "projectile_speed": 0.5,
+      "projectile_lifetime_ticks": 10
     }
   }
 }
