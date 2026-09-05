@@ -1,0 +1,35 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="nfx"
+description='''
+A protocol between gun mods and the mobs that use them.
+
+Ranged Weapons defines what a gun is from the point of view of a mob's AI --
+how many rounds it holds, how fast it fires, how hard it hits, how it launches
+a projectile -- so that a mod which arms mobs works with any gun mod that
+implements the contract, or that ships a datapack profile, without either mod
+naming the other.
+
+Consumers nest this jar inside their own. Gun mods implement it directly, or a
+bridge implements it on their behalf.
+'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"

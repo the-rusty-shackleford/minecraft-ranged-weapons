@@ -1,0 +1,111 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+    id 'maven-publish'
+    id 'idea'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+// Mojang ships Java 21 to end users in 1.21.1, so mods must target Java 21.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+// ModDevGradle registers only the NeoForged and Mojang repositories. JUnit
+// lives on Central.
+repositories {
+    mavenCentral()
+}
+
+// Layering here differs from a consumer's: the contract's value types carry
+// their own DataFixerUpper codecs, so `main` needs the modding classpath and
+// `test` gets it too -- for the codec classes and ResourceLocation, not for
+// a game. Nothing boots Minecraft: neoForge.unitTest is deliberately not
+// enabled, and a test that needs a bootstrapped registry does not belong here.
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+
+    addModdingDependenciesTo(sourceSets.test)
+}
+
+dependencies {
+    // Plain JUnit 5. Gradle 9 no longer injects the platform launcher, so it
+    // is declared. These exact versions are the ones in the local Gradle cache.
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly    'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testRuntimeOnly    'org.junit.platform:junit-platform-launcher:1.9.2'
+}
+
+tasks.named('test', Test) {
+    // -ea is on by default for Test tasks; rep invariants rely on it.
+    useJUnitPlatform()
+}
+
+// Consumers compile against and nest this artifact. Until a real Maven
+// repository exists, `./gradlew publishToMavenLocal` is how it is shared,
+// and it is the same path a third-party author would use against a real one.
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
