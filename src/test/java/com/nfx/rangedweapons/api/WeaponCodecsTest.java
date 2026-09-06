@@ -153,7 +153,8 @@ final class WeaponCodecsTest {
                 Optional.of(AmmoFamilies.SMALL),
                 Optional.of(ResourceLocation.parse("agm:small_magazine")),
                 Optional.of(ResourceLocation.parse("agm:revolver")),
-                Optional.of(ResourceLocation.parse("agm:far_shot")));
+                Optional.of(ResourceLocation.parse("agm:far_shot")),
+                Optional.of(new Falloff(10.0f, 28.0f, 0.5f)));
     }
 
     @Test
@@ -171,6 +172,7 @@ final class WeaponCodecsTest {
         assertFalse(profile.magazineItem().isPresent());
         assertFalse(profile.shotSound().isPresent());
         assertFalse(profile.farShotSound().isPresent());
+        assertFalse(profile.falloff().isPresent());
     }
 
     @Test
@@ -183,6 +185,17 @@ final class WeaponCodecsTest {
         assertEquals("agm:small_magazine", json.get("magazine").getAsString());
         assertEquals("agm:revolver", json.get("shot_sound").getAsString());
         assertEquals("agm:far_shot", json.get("far_shot_sound").getAsString());
+        assertEquals(10.0f, json.getAsJsonObject("damage_falloff").get("start").getAsFloat());
+        assertEquals(0.5f, json.getAsJsonObject("damage_falloff").get("floor").getAsFloat());
+    }
+
+    @Test
+    void aFalloffWithEndBeforeStartIsRefusedByTheProfile() {
+        JsonObject json = statsJson();
+        JsonObject falloff = new JsonObject();
+        falloff.addProperty("start", 20.0); falloff.addProperty("end", 5.0); falloff.addProperty("floor", 0.5);
+        json.add("damage_falloff", falloff);
+        assertTrue(decodeError(WeaponProfile.CODEC, json).contains("start"), "the RI's message reaches the pack author");
     }
 
     @Test

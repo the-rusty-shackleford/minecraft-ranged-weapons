@@ -48,6 +48,23 @@
       "engagement_range": 8.0,
       "projectile_speed": 0.5,
       "projectile_lifetime_ticks": 10
+    },
+    "minecraft:blaze_powder": {
+      "class": "shotgun",
+      "capacity": 2,
+      "reload_ticks_per_round": 5,
+      "fire_rate_ticks": 10,
+      "damage": 8.0,
+      "projectiles_per_shot": 1,
+      "spread": 0.0,
+      "engagement_range": 16.0,
+      "projectile_speed": 2.0,
+      "projectile_lifetime_ticks": 100,
+      "damage_falloff": {
+        "start": 2.0,
+        "end": 10.0,
+        "floor": 0.25
+      }
     }
   }
 }

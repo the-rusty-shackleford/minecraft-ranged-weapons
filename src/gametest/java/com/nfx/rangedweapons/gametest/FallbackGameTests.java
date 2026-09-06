@@ -159,6 +159,26 @@ public final class FallbackGameTests {
         });
     }
 
+    @GameTest(template = "arena", timeoutTicks = 100)
+    public void damageFallsWithTheDistanceFlown(GameTestHelper helper) {
+        layFloor(helper);
+        ArmorStand shooter = helper.spawn(EntityType.ARMOR_STAND, SHOOTER);
+        IronGolem target = helper.spawnWithNoFreeWill(EntityType.IRON_GOLEM, TARGET);
+        // Blaze powder: 8 damage, falling from 2 blocks to a quarter at 10.
+        // The round flies from just in front of the eye to the golem, about
+        // 5.4 blocks: 3.4 of the 8 between start and end, so 1 - 0.425 * 0.75.
+        ItemStack stack = new ItemStack(Items.BLAZE_POWDER);
+        RangedWeapon weapon = requireWeapon(helper, stack);
+        Vec3 aim = target.position().add(0, target.getBbHeight() * 0.5, 0).subtract(shooter.getEyePosition());
+        fire(helper, weapon, stack, shooter, aim);
+        helper.succeedWhen(() -> {
+            helper.assertFalse(target.getHealth() == target.getMaxHealth(), "the target has not been hit yet");
+            float dealt = target.getMaxHealth() - target.getHealth();
+            helper.assertTrue(dealt > 4.0f && dealt < 7.0f,
+                    "dealt " + dealt + ": less than the full 8 and more than the floor's 2, as five blocks out should");
+        });
+    }
+
     @GameTest(template = "arena", timeoutTicks = 60)
     public void bulletIsGoneAfterItsLifetimeAndNotBefore(GameTestHelper helper) {
         layFloor(helper);

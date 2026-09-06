@@ -59,10 +59,17 @@ retunes spread and range without touching the gun mod.
 
 A profile's shape is flat: an optional `class`, the nine `WeaponStats` fields
 in snake_case, four optional ids -- `ammo`, `magazine`, `shot_sound`,
-`far_shot_sound` -- and an optional tag, `ammo_family`. A number out of
-range is refused at load, naming the field. An id that resolves to nothing
-is reported once per reload, naming the weapon, the field and what will
-silently not happen.
+`far_shot_sound` -- an optional tag, `ammo_family`, and an optional
+`damage_falloff` object. A number out of range is refused at load, naming
+the field. An id that resolves to nothing is reported once per reload,
+naming the weapon, the field and what will silently not happen.
+
+`damage_falloff` is `{"start": 5.0, "end": 18.0, "floor": 0.2}`: a round
+deals full damage up to `start` blocks flown, the `floor` fraction from
+`end` on, and a straight line between. The fallback bullet measures from
+where it was fired; a native implementation is expected to honour it. A
+shotgun that is lethal at arm's length and a sting at twenty blocks is that
+example; a rifle that does not care leaves the field out.
 
 ## Ammunition
 

@@ -41,8 +41,10 @@ import java.util.Optional;
  * <p>The datapack shape is flat: {@code "class"} (optional, default
  * {@code unclassified}), the nine {@link WeaponStats} fields, the four
  * optional ids {@code "ammo"}, {@code "magazine"}, {@code "shot_sound"},
- * {@code "far_shot_sound"}, and the optional tag {@code "ammo_family"}
- * (written with a leading {@code #}, as tags are).
+ * {@code "far_shot_sound"}, the optional tag {@code "ammo_family"}
+ * (written with a leading {@code #}, as tags are), and the optional object
+ * {@code "damage_falloff"} ({@link Falloff}: {@code start}, {@code end},
+ * {@code floor}).
  *
  * <p>Ammunition is two questions with two answers. What the weapon
  * <em>accepts</em> is its family: an item tag, so any round in it loads,
@@ -64,11 +66,13 @@ import java.util.Optional;
  * @param magazineItem a detachable container for its rounds, if any; also loot
  * @param shotSound    the report heard near the shooter, if any
  * @param farShotSound the muffled report heard at a distance, if any
+ * @param falloff      how damage falls with distance flown, if it does
  */
 public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
                             Optional<ResourceLocation> ammoItem, Optional<TagKey<Item>> ammoFamily,
                             Optional<ResourceLocation> magazineItem,
-                            Optional<ResourceLocation> shotSound, Optional<ResourceLocation> farShotSound) {
+                            Optional<ResourceLocation> shotSound, Optional<ResourceLocation> farShotSound,
+                            Optional<Falloff> falloff) {
 
     /** The datapack shape described above. */
     public static final Codec<WeaponProfile> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -78,7 +82,8 @@ public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
             TagKey.hashedCodec(Registries.ITEM).optionalFieldOf("ammo_family").forGetter(WeaponProfile::ammoFamily),
             ResourceLocation.CODEC.optionalFieldOf("magazine").forGetter(WeaponProfile::magazineItem),
             ResourceLocation.CODEC.optionalFieldOf("shot_sound").forGetter(WeaponProfile::shotSound),
-            ResourceLocation.CODEC.optionalFieldOf("far_shot_sound").forGetter(WeaponProfile::farShotSound)
+            ResourceLocation.CODEC.optionalFieldOf("far_shot_sound").forGetter(WeaponProfile::farShotSound),
+            Falloff.CODEC.optionalFieldOf("damage_falloff").forGetter(WeaponProfile::falloff)
     ).apply(i, WeaponProfile::new));
 
     /**
@@ -86,7 +91,7 @@ public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
      */
     public WeaponProfile {
         if (weaponClass == null || defaults == null || ammoItem == null || ammoFamily == null || magazineItem == null
-                || shotSound == null || farShotSound == null) {
+                || shotSound == null || farShotSound == null || falloff == null) {
             throw new IllegalArgumentException("no field of a WeaponProfile may be null");
         }
     }

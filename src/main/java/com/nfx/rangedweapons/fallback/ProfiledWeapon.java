@@ -130,6 +130,7 @@ public final class ProfiledWeapon implements RangedWeapon {
             ProfiledBullet bullet = new ProfiledBullet(Fallback.BULLET.get(), shooter, level, stack,
                     shot.damage(), shot.speed(), shot.lifetimeTicks());
             bullet.setPos(origin.x, origin.y, origin.z);
+            profile().falloff().ifPresent(bullet::setFalloff);
             Vec3 direction = Spread.jitter(shot.direction(), shot.spread(), shooter.getRandom());
             bullet.shoot(direction.x, direction.y, direction.z, shot.speed(), 0.0f);
             level.addFreshEntity(bullet);
