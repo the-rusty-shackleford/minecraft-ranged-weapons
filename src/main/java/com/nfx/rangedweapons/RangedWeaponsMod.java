@@ -27,6 +27,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.datamaps.DataMapsUpdatedEvent;
@@ -60,6 +61,7 @@ public final class RangedWeaponsMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public RangedWeaponsMod(IEventBus modBus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.COMMON, RangedWeaponsConfig.SPEC);
         Fallback.register(modBus);
         modBus.addListener(RangedWeaponsMod::registerDataMaps);
         // A game-bus event, not a mod-bus one.

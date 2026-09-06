@@ -77,6 +77,42 @@ direction is the aim plus an independent uniform offset in `[-spread, +spread]`
 on each axis, renormalised. The fallback tier implements exactly that
 (`Spread.jitter`); a native implementation is expected to.
 
+## What a bullet does to a block
+
+The fallback bullet leaves a mark. Every hit throws debris of the block's own
+texture back from the face, sparks too if the block is stone or metal, and
+plays the block's hit sound. Then, if the shooter is allowed to, the hit
+counts toward breaking the block.
+
+A block's health is its hardness times `healthPerHardness` (15 by default),
+so the numbers the game already has decide: glass at 0.3 shatters at one
+round of five, stone at 1.5 takes five, an iron block at 5 fifteen. Damage is
+remembered per block for twenty seconds after the last hit, showing as the
+vanilla crack stages, then the block heals. Blocks at or above
+`bulletproofHardness` (20: obsidian, ancient debris, netherite, an ender
+chest), blocks with negative hardness (bedrock, command blocks) and anything
+in `#rangedweapons:bulletproof` never break; anything in
+`#rangedweapons:shatters` (glass, panes, ice, glowstone) goes on the first
+hit whatever its hardness. Both tags are a datapack's to extend.
+
+Whose bullets may break anything is `breakBlocks` in
+`config/rangedweapons-common.toml`: `PLAYERS` (the default; each break is
+first offered to protection and claim mods as the ordinary block-break event,
+and spawn protection holds), `EVERYONE` (mobs too, under the `mobGriefing`
+rule), or `NOBODY` (debris and sound only). A mob armed through the protocol
+shatters no windows unless the server says so.
+
+## Holding a gun in first person
+
+Hold My Items, if installed, takes over first-person rendering of every held
+item and poses it in its own arm animation; a rifle comes out sideways, which
+is why that mod's own default exclusion list is gun mods. The protocol's
+client offers `HoldMyItems.excludeItems(items)`: a gun mod calls it once at
+client setup with its guns, and if Hold My Items is present they are written
+into its per-item exclusion list and saved, so they are held the way their
+models say. Reached by reflection, absent on most installs, and every failure
+is one log line and the old behaviour.
+
 ## Building
 
 ```

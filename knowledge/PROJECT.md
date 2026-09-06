@@ -43,8 +43,9 @@ same bounds, so a bad datapack is refused at load naming the field.
 
 `./gradlew check`: plain JUnit against everything pure (no game booted) and
 gametests on a headless server for everything that needs a registry — the
-fallback bullet hitting for exactly the profile's damage, precedence against
-real capability registrations. The gametest task fails without the framework's
+fallback bullet hitting for exactly the profile's damage, what it does to
+glass, stone, ice and obsidian, precedence against real capability
+registrations. The gametest task fails without the framework's
 own "All N required tests passed" line; the exit code alone is not trusted.
 
 ## Consumers and providers

@@ -19,6 +19,7 @@ package com.nfx.rangedweapons.fallback;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -159,13 +160,18 @@ public final class ProfiledBullet extends AbstractArrow {
 
     /**
      * Lets the block react as it would to any projectile -- a target block
-     * lights up, a bell rings -- and is gone. Deliberately not vanilla's
-     * arrow behaviour, which sticks, plays a sound and waits a minute.
+     * lights up, a bell rings -- then, on the server, what {@link Impact}
+     * says: debris, the hit sound, and damage toward breaking the block if
+     * the owner may. Gone either way. Deliberately not vanilla's arrow
+     * behaviour, which sticks, plays a sound and waits a minute.
      */
     @Override
     protected void onHitBlock(BlockHitResult result) {
         BlockState state = this.level().getBlockState(result.getBlockPos());
         state.onProjectileHit(this.level(), state, result, this);
+        if (this.level() instanceof ServerLevel serverLevel) {
+            Impact.hit(serverLevel, this, result);
+        }
         this.discard();
     }
 
