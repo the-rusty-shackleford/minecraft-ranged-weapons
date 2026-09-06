@@ -18,6 +18,7 @@
 package com.nfx.rangedweapons.api;
 
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -45,6 +46,16 @@ public final class AmmoFamilies {
     public static final TagKey<Item> SHELL = family("shell");
     /** Every family above, and any a mod adds to it: ammunition of any kind. */
     public static final TagKey<Item> ALL = TagKey.create(Registries.ITEM, RangedWeapons.id("ammo"));
+
+    /**
+     * effects: returns the family's name for a player -- "medium rounds" --
+     * from the language key {@code ammo_family.<namespace>.<path>}, falling
+     * back to the tag written as a pack would write it
+     */
+    public static Component displayName(TagKey<Item> family) {
+        ResourceLocation id = family.location();
+        return Component.translatableWithFallback("ammo_family." + id.toLanguageKey(), "#" + id);
+    }
 
     /** effects: returns the tag {@code rangedweapons:ammo/<name>} */
     public static TagKey<Item> family(String name) {

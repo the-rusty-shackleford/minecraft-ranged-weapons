@@ -1,3 +1,7 @@
 {
-  "entity.rangedweapons.bullet": "Bullet"
+  "entity.rangedweapons.bullet": "Bullet",
+  "ammo_family.rangedweapons.ammo/small": "small rounds",
+  "ammo_family.rangedweapons.ammo/medium": "medium rounds",
+  "ammo_family.rangedweapons.ammo/large": "large rounds",
+  "ammo_family.rangedweapons.ammo/shell": "shells"
 }
