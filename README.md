@@ -82,7 +82,8 @@ on each axis, renormalised. The fallback tier implements exactly that
 The fallback bullet leaves a mark. Every hit throws debris of the block's own
 texture back from the face, sparks too if the block is stone or metal, and
 plays the block's hit sound. Then, if the shooter is allowed to, the hit
-counts toward breaking the block.
+counts toward breaking the block. A block shot to pieces is destroyed, not
+mined: it drops nothing (a container still spills what it held).
 
 A block's health is its hardness times `healthPerHardness` (15 by default),
 so the numbers the game already has decide: glass at 0.3 shatters at one

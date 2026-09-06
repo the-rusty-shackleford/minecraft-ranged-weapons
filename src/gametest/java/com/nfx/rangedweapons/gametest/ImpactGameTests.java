@@ -80,6 +80,17 @@ public final class ImpactGameTests {
     }
 
     @GameTest(template = "arena", timeoutTicks = 60)
+    public void aBlockShotToPiecesDropsNothing(GameTestHelper helper) {
+        Player shooter = arena(helper, Blocks.DIRT);          // 0.5 hardness, 7.5 health: two rounds; drops itself when mined
+        shots(helper, shooter, 2);
+        helper.runAtTickTime(2 * SHOT_INTERVAL + 4, () -> {
+            helper.assertBlockPresent(Blocks.AIR, TARGET);
+            helper.assertEntityNotPresent(EntityType.ITEM);
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "arena", timeoutTicks = 60)
     public void stoneStandsThroughFourRoundsAndFallsToTheFifth(GameTestHelper helper) {
         Player shooter = arena(helper, Blocks.STONE);
         shots(helper, shooter, 4);
@@ -91,6 +102,8 @@ public final class ImpactGameTests {
         });
         helper.runAtTickTime(settled + 4, () -> {
             helper.assertBlockPresent(Blocks.AIR, TARGET);
+            // Destroyed, not mined: stone shot to pieces yields no cobblestone.
+            helper.assertEntityNotPresent(EntityType.ITEM);
             helper.succeed();
         });
     }

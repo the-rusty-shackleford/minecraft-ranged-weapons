@@ -166,8 +166,10 @@ public final class Impact {
      * here (config policy, spawn protection, the block-break event for a
      * player, the {@code mobGriefing} rule for a mob) and the block is not
      * bulletproof, adds the bullet's damage to what the block remembers,
-     * and either breaks the block with its drops or shows the crack stage
-     * reached. Nothing for air.
+     * and either breaks the block -- destroyed, not mined: it drops nothing,
+     * though a container still spills what it held, as one does when
+     * removed by any means -- or shows the crack stage reached. Nothing for
+     * air.
      *
      * @param level  the server level the hit is in
      * @param bullet the bullet, for its damage and owner
@@ -200,7 +202,7 @@ public final class Impact {
         if (dealt >= health) {
             ledger.remove(key);
             level.destroyBlockProgress(breakerId(key), pos, -1);
-            level.destroyBlock(pos, true, owner);
+            level.destroyBlock(pos, false, owner);
             return;
         }
         if (ledger.size() > PRUNE_ABOVE) {
