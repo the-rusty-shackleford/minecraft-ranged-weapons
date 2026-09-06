@@ -17,8 +17,10 @@
  */
 package com.nfx.rangedweapons.client;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.nfx.rangedweapons.api.RangedWeapons;
 import com.nfx.rangedweapons.fallback.ProfiledBullet;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.ArrowRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
@@ -38,9 +40,20 @@ import net.minecraft.resources.ResourceLocation;
 public final class ProfiledBulletRenderer extends ArrowRenderer<ProfiledBullet> {
 
     private static final ResourceLocation TEXTURE = RangedWeapons.id("textures/entity/bullet.png");
+    /** The arrow model is a block long; a tracer is a fraction of that. */
+    private static final float SCALE = 0.4f;
 
     public ProfiledBulletRenderer(EntityRendererProvider.Context context) {
         super(context);
+    }
+
+    @Override
+    public void render(ProfiledBullet entity, float entityYaw, float partialTicks, PoseStack poseStack,
+                       MultiBufferSource buffer, int packedLight) {
+        poseStack.pushPose();
+        poseStack.scale(SCALE, SCALE, SCALE);
+        super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
+        poseStack.popPose();
     }
 
     @Override
