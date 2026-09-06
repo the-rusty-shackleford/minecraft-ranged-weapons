@@ -1,6 +1,6 @@
 /*
  * Ranged Weapons - a protocol between gun mods and the mobs that use them.
- * Copyright (C) 2026 nfx and contributors
+ * Copyright (C) 2026 nfx and Rusty Shackleford
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU Affero General Public License as published by
