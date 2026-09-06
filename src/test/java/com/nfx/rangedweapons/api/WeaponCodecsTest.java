@@ -150,6 +150,7 @@ final class WeaponCodecsTest {
     private static WeaponProfile fullProfile() {
         return new WeaponProfile(WeaponClass.SIDEARM, revolver(),
                 Optional.of(ResourceLocation.parse("agm:small_bullet")),
+                Optional.of(AmmoFamilies.SMALL),
                 Optional.of(ResourceLocation.parse("agm:small_magazine")),
                 Optional.of(ResourceLocation.parse("agm:revolver")),
                 Optional.of(ResourceLocation.parse("agm:far_shot")));
@@ -166,6 +167,7 @@ final class WeaponCodecsTest {
         assertSame(WeaponClass.UNCLASSIFIED, profile.weaponClass());
         assertEquals(revolver(), profile.defaults());
         assertFalse(profile.ammoItem().isPresent());
+        assertFalse(profile.ammoFamily().isPresent());
         assertFalse(profile.magazineItem().isPresent());
         assertFalse(profile.shotSound().isPresent());
         assertFalse(profile.farShotSound().isPresent());
@@ -177,9 +179,24 @@ final class WeaponCodecsTest {
         assertEquals("sidearm", json.get("class").getAsString());
         assertEquals(6, json.get("capacity").getAsInt());
         assertEquals("agm:small_bullet", json.get("ammo").getAsString());
+        assertEquals("#rangedweapons:ammo/small", json.get("ammo_family").getAsString(), "a tag is written with its hash");
         assertEquals("agm:small_magazine", json.get("magazine").getAsString());
         assertEquals("agm:revolver", json.get("shot_sound").getAsString());
         assertEquals("agm:far_shot", json.get("far_shot_sound").getAsString());
+    }
+
+    @Test
+    void anAmmoFamilyWithoutItsHashIsRefused() {
+        JsonObject json = statsJson();
+        json.addProperty("ammo_family", "rangedweapons:ammo/small");
+        assertTrue(decodeError(WeaponProfile.CODEC, json).contains("Not a tag id"), "vanilla's wording: the hash is what makes it a tag");
+    }
+
+    @Test
+    void anotherModsFamilyDecodesUnderTheConvention() {
+        JsonObject json = statsJson();
+        json.addProperty("ammo_family", "#spudgun:ammo/potato");
+        assertEquals(AmmoFamilies.family("spudgun", "potato"), decode(WeaponProfile.CODEC, json).ammoFamily().orElseThrow());
     }
 
     @Test

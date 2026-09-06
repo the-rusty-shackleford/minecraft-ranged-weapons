@@ -19,7 +19,12 @@ package com.nfx.rangedweapons.api;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.Optional;
 
@@ -34,22 +39,35 @@ import java.util.Optional;
  * protocol mod, so the loud failure is not lost, only moved.
  *
  * <p>The datapack shape is flat: {@code "class"} (optional, default
- * {@code unclassified}), the nine {@link WeaponStats} fields, and the four
+ * {@code unclassified}), the nine {@link WeaponStats} fields, the four
  * optional ids {@code "ammo"}, {@code "magazine"}, {@code "shot_sound"},
- * {@code "far_shot_sound"}.
+ * {@code "far_shot_sound"}, and the optional tag {@code "ammo_family"}
+ * (written with a leading {@code #}, as tags are).
+ *
+ * <p>Ammunition is two questions with two answers. What the weapon
+ * <em>accepts</em> is its family: an item tag, so any round in it loads,
+ * from any mod; the protocol ships {@link AmmoFamilies#SMALL small},
+ * {@link AmmoFamilies#MEDIUM medium}, {@link AmmoFamilies#LARGE large} and
+ * {@link AmmoFamilies#SHELL shell}, and any mod may add its own. What its
+ * <em>native round</em> is stays an item: the one a killed carrier drops,
+ * the one a recipe makes, the one a tooltip names -- a tag has no first
+ * member to be that. A weapon with a family accepts the family; one
+ * without accepts only its native round; one with neither loads nothing.
  *
  * <p>RI: no field is null. Enforced in the constructor; the {@code Optional}s
  * express absence, a null {@code Optional} is a bug.
  *
  * @param weaponClass  the coarse category, for consumer policy
  * @param defaults     the stats for a stack with no overrides of its own
- * @param ammoItem     the loose-round item this weapon eats, if any; what a killed carrier drops
+ * @param ammoItem     the native round: the loose-round item this weapon eats; what a killed carrier drops
+ * @param ammoFamily   the tag of every round this weapon accepts, if it takes more than its native round
  * @param magazineItem a detachable container for its rounds, if any; also loot
  * @param shotSound    the report heard near the shooter, if any
  * @param farShotSound the muffled report heard at a distance, if any
  */
 public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
-                            Optional<ResourceLocation> ammoItem, Optional<ResourceLocation> magazineItem,
+                            Optional<ResourceLocation> ammoItem, Optional<TagKey<Item>> ammoFamily,
+                            Optional<ResourceLocation> magazineItem,
                             Optional<ResourceLocation> shotSound, Optional<ResourceLocation> farShotSound) {
 
     /** The datapack shape described above. */
@@ -57,6 +75,7 @@ public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
             WeaponClass.CODEC.optionalFieldOf("class", WeaponClass.UNCLASSIFIED).forGetter(WeaponProfile::weaponClass),
             WeaponStats.MAP_CODEC.forGetter(WeaponProfile::defaults),
             ResourceLocation.CODEC.optionalFieldOf("ammo").forGetter(WeaponProfile::ammoItem),
+            TagKey.hashedCodec(Registries.ITEM).optionalFieldOf("ammo_family").forGetter(WeaponProfile::ammoFamily),
             ResourceLocation.CODEC.optionalFieldOf("magazine").forGetter(WeaponProfile::magazineItem),
             ResourceLocation.CODEC.optionalFieldOf("shot_sound").forGetter(WeaponProfile::shotSound),
             ResourceLocation.CODEC.optionalFieldOf("far_shot_sound").forGetter(WeaponProfile::farShotSound)
@@ -66,9 +85,27 @@ public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
      * @throws IllegalArgumentException if any field is null
      */
     public WeaponProfile {
-        if (weaponClass == null || defaults == null || ammoItem == null || magazineItem == null
+        if (weaponClass == null || defaults == null || ammoItem == null || ammoFamily == null || magazineItem == null
                 || shotSound == null || farShotSound == null) {
             throw new IllegalArgumentException("no field of a WeaponProfile may be null");
         }
+    }
+
+    /**
+     * effects: returns whether {@code stack} loads into this weapon: a
+     * member of its ammo family if it names one, else its native round
+     * item, else nothing; never the empty stack
+     *
+     * @param stack the candidate
+     * @return whether it is accepted
+     */
+    public boolean acceptsAmmo(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (ammoFamily.isPresent()) {
+            return stack.is(ammoFamily.get());
+        }
+        return ammoItem.isPresent() && BuiltInRegistries.ITEM.getOptional(ammoItem.get()).map(stack::is).orElse(false);
     }
 }

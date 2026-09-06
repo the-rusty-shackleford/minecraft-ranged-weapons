@@ -52,7 +52,7 @@ public final class NativeTierFixture {
     static final RangedWeapon NATIVE_WEAPON = new RangedWeapon() {
         private final WeaponProfile profile = new WeaponProfile(WeaponClass.get("fixture"),
                 new WeaponStats(1, 0, 1, 0.0f, 1, 0.0f, 1.0f, 1.0f, 1),
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
         @Override
         public WeaponProfile profile() {

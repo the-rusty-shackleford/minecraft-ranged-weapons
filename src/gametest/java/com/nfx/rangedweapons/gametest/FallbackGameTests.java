@@ -18,9 +18,11 @@
 package com.nfx.rangedweapons.gametest;
 
 import com.nfx.rangedweapons.RangedWeaponsMod;
+import com.nfx.rangedweapons.api.AmmoFamilies;
 import com.nfx.rangedweapons.api.RangedWeapon;
 import com.nfx.rangedweapons.api.RangedWeapons;
 import com.nfx.rangedweapons.api.Shot;
+import com.nfx.rangedweapons.api.WeaponProfile;
 import com.nfx.rangedweapons.fallback.Fallback;
 import com.nfx.rangedweapons.fallback.ProfiledWeapon;
 import net.minecraft.core.BlockPos;
@@ -116,6 +118,26 @@ public final class FallbackGameTests {
         expectThrows(helper, IllegalArgumentException.class, () -> weapon.load(stack, 5), "load above capacity");
         expectThrows(helper, IllegalArgumentException.class, () -> weapon.load(stack, -1), "load below zero");
         expectThrows(helper, IllegalStateException.class, () -> weapon.consumeRound(stack), "consume when empty");
+        helper.succeed();
+    }
+
+    @GameTest(template = "arena")
+    public void aWeaponAcceptsItsFamilyOrElseItsNativeRound(GameTestHelper helper) {
+        WeaponProfile stick = requireWeapon(helper, new ItemStack(Items.STICK)).profile();
+        helper.assertTrue(stick.acceptsAmmo(new ItemStack(Items.FLINT)), "the native round, tagged into the family");
+        helper.assertTrue(stick.acceptsAmmo(new ItemStack(Items.ARROW)), "another member of the family");
+        helper.assertFalse(stick.acceptsAmmo(new ItemStack(Items.IRON_NUGGET)), "a member of another family");
+        helper.assertFalse(stick.acceptsAmmo(new ItemStack(Items.DIAMOND)), "an item in no family");
+        helper.assertFalse(stick.acceptsAmmo(ItemStack.EMPTY), "the empty stack");
+        helper.assertTrue(new ItemStack(Items.ARROW).is(AmmoFamilies.ALL), "a family member is ammunition");
+        helper.assertFalse(new ItemStack(Items.DIAMOND).is(AmmoFamilies.ALL), "a diamond is not");
+
+        WeaponProfile rod = requireWeapon(helper, new ItemStack(Items.BLAZE_ROD)).profile();
+        helper.assertTrue(rod.acceptsAmmo(new ItemStack(Items.FEATHER)), "no family: the native round");
+        helper.assertFalse(rod.acceptsAmmo(new ItemStack(Items.FLINT)), "no family: nothing else, however tagged");
+
+        WeaponProfile bone = requireWeapon(helper, new ItemStack(Items.BONE)).profile();
+        helper.assertFalse(bone.acceptsAmmo(new ItemStack(Items.FLINT)), "neither family nor round: nothing loads");
         helper.succeed();
     }
 

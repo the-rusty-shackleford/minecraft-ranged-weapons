@@ -58,10 +58,43 @@ the class, the ammunition to drop and the sounds to play, and where a pack
 retunes spread and range without touching the gun mod.
 
 A profile's shape is flat: an optional `class`, the nine `WeaponStats` fields
-in snake_case, and four optional ids -- `ammo`, `magazine`, `shot_sound`,
-`far_shot_sound`. A number out of range is refused at load, naming the field.
-An id that resolves to nothing is reported once per reload, naming the
-weapon, the field and what will silently not happen.
+in snake_case, four optional ids -- `ammo`, `magazine`, `shot_sound`,
+`far_shot_sound` -- and an optional tag, `ammo_family`. A number out of
+range is refused at load, naming the field. An id that resolves to nothing
+is reported once per reload, naming the weapon, the field and what will
+silently not happen.
+
+## Ammunition
+
+Ammunition is two questions with two answers. What a weapon **accepts** is
+its `ammo_family`: an item tag, written with its `#`, so any round in it
+loads, from any mod. What its **native round** is stays `ammo`, an item:
+the one a killed carrier drops, the one a recipe makes, the one a tooltip
+names -- a tag has no first member to be that. A weapon with a family
+accepts the family; one without accepts only its native round; one with
+neither loads nothing. `WeaponProfile.acceptsAmmo(stack)` is the rule.
+
+The protocol ships four families, empty until a mod fills them, and a
+parent for "is this ammunition at all":
+
+| Tag | For |
+|---|---|
+| `#rangedweapons:ammo/small` | pistol and submachine-gun rounds |
+| `#rangedweapons:ammo/medium` | rifle and machine-gun rounds |
+| `#rangedweapons:ammo/large` | heavy rounds: anti-materiel rifles, cannons |
+| `#rangedweapons:ammo/shell` | shotgun shells, a different cartridge rather than a size |
+| `#rangedweapons:ammo` | all of the above |
+
+A mod that adds a weapon nothing above fits declares its own family under
+the same convention, `<namespace>:ammo/<family>`, and may add it to
+`#rangedweapons:ammo`; the protocol never has to know. A round joins a family
+by being tagged into it -- `data/rangedweapons/tags/item/ammo/medium.json`
+in any pack -- so a mod's rifle takes another mod's rifle rounds the day
+both are tagged.
+
+Two mistakes are reported once per reload: a family with no members
+(nothing will load), and a native round that is not in its own family (the
+round the weapon drops would not load into it).
 
 ```json
 { "values": { "minecraft:stick": {

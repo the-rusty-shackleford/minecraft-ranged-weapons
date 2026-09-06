@@ -10,7 +10,9 @@
       "spread": 0.0,
       "engagement_range": 16.0,
       "projectile_speed": 2.0,
-      "projectile_lifetime_ticks": 100
+      "projectile_lifetime_ticks": 100,
+      "ammo": "minecraft:flint",
+      "ammo_family": "#rangedweapons:ammo/small"
     },
     "minecraft:blaze_rod": {
       "capacity": 1,
@@ -21,7 +23,8 @@
       "spread": 0.0,
       "engagement_range": 16.0,
       "projectile_speed": 0.5,
-      "projectile_lifetime_ticks": 10
+      "projectile_lifetime_ticks": 10,
+      "ammo": "minecraft:feather"
     },
     "minecraft:bone": {
       "class": "shotgun",

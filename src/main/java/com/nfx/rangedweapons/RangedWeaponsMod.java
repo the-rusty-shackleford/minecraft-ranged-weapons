@@ -31,6 +31,8 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.datamaps.DataMapsUpdatedEvent;
+import net.neoforged.neoforge.event.TagsUpdatedEvent;
+import net.minecraft.core.HolderSet;
 import net.neoforged.neoforge.registries.datamaps.RegisterDataMapTypesEvent;
 import org.slf4j.Logger;
 
@@ -64,8 +66,9 @@ public final class RangedWeaponsMod {
         container.registerConfig(ModConfig.Type.COMMON, RangedWeaponsConfig.SPEC);
         Fallback.register(modBus);
         modBus.addListener(RangedWeaponsMod::registerDataMaps);
-        // A game-bus event, not a mod-bus one.
+        // Game-bus events, not mod-bus ones.
         NeoForge.EVENT_BUS.addListener(RangedWeaponsMod::onDataMapsUpdated);
+        NeoForge.EVENT_BUS.addListener(RangedWeaponsMod::onTagsUpdated);
     }
 
     private static void registerDataMaps(RegisterDataMapTypesEvent event) {
@@ -73,7 +76,49 @@ public final class RangedWeaponsMod {
     }
 
     private static void onDataMapsUpdated(DataMapsUpdatedEvent event) {
-        event.ifRegistry(Registries.ITEM, RangedWeaponsMod::validateItemProfiles);
+        event.ifRegistry(Registries.ITEM, items -> {
+            validateItemProfiles(items);
+            validateAmmoFamilies(items);
+        });
+    }
+
+    private static void onTagsUpdated(TagsUpdatedEvent event) {
+        validateAmmoFamilies(BuiltInRegistries.ITEM);
+    }
+
+    // The data map and the tags arrive on separate events whose order is
+    // the loader's business; the family check needs both, so it runs on
+    // each and validates once per data map, when tags are bound.
+    private static Object lastFamilyValidatedMap = null;
+
+    /**
+     * effects: if the item data map is present and tags are bound, and
+     * this data map has not been checked yet, logs one warning per
+     * profile whose ammo family has no members (nothing will load) or does
+     * not contain its own native round (the round the weapon drops will
+     * not load into it)
+     */
+    private static void validateAmmoFamilies(Registry<Item> items) {
+        var map = items.getDataMap(RangedWeapons.WEAPONS);
+        if (map.isEmpty() || map == lastFamilyValidatedMap || items.getTags().findAny().isEmpty()) {
+            return;
+        }
+        lastFamilyValidatedMap = map;
+        map.forEach((key, profile) -> profile.ammoFamily().ifPresent(family -> {
+            ResourceLocation weapon = key.location();
+            Optional<HolderSet.Named<Item>> members = items.getTag(family);
+            if (members.isEmpty() || members.get().size() == 0) {
+                LOGGER.warn("weapon profile for {} names ammo_family #{}, which has no members; nothing will load into it",
+                        weapon, family.location());
+                return;
+            }
+            profile.ammoItem().flatMap(items::getOptional).ifPresent(round -> {
+                if (!items.wrapAsHolder(round).is(family)) {
+                    LOGGER.warn("weapon profile for {} names ammo {} but ammo_family #{} does not contain it; "
+                            + "the round it drops will not load into it", weapon, profile.ammoItem().get(), family.location());
+                }
+            });
+        }));
     }
 
     /**
