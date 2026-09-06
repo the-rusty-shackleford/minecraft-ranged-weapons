@@ -126,11 +126,15 @@ public final class RangedWeapons {
     public static final String NAMESPACE = "rangedweapons";
 
     /**
-     * Item to {@link WeaponProfile}, from datapacks. Not synced to clients:
-     * the AI that reads it is server-side.
+     * Item to {@link WeaponProfile}, from datapacks. Synced to clients that
+     * carry the protocol, so a client-side consumer -- an ammo counter that
+     * needs the capacity -- reads the same profile the server does; not
+     * mandatory, so a client without it still connects.
      */
     public static final DataMapType<Item, WeaponProfile> WEAPONS =
-            DataMapType.builder(id("weapons"), Registries.ITEM, WeaponProfile.CODEC).build();
+            DataMapType.builder(id("weapons"), Registries.ITEM, WeaponProfile.CODEC)
+                    .synced(WeaponProfile.CODEC, false)
+                    .build();
 
     /**
      * effects: returns the id {@code rangedweapons:<path>}
