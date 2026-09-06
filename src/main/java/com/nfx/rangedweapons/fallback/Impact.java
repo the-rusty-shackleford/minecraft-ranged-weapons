@@ -85,7 +85,13 @@ public final class Impact {
     private static final int DEBRIS_COUNT = 8;
     private static final double DEBRIS_SPREAD = 0.06;
     private static final double DEBRIS_SPEED = 0.12;
-    private static final int SPARK_COUNT = 2;
+    // Sparks are vanilla's electric sparks: tiny, bright, gone in a few
+    // ticks. Lava particles were tried and looked like lava, which Rusty
+    // noticed at once; critical-hit stars were tried and were as big as
+    // the cracks. Both judged in the booth's burst-into-stone frame.
+    private static final int SPARK_COUNT = 4;
+    private static final double SPARK_SPREAD = 0.04;
+    private static final double SPARK_SPEED = 0.3;
 
     // ---------------------------------------------------------------- rules
 
@@ -237,7 +243,8 @@ public final class Impact {
 
     /**
      * effects: debris of the block's own texture thrown from the face hit,
-     * sparks too if the block is stone or metal, and the block's hit sound
+     * a few small sparks too if the block is stone or metal, and the
+     * block's hit sound
      */
     private static void splash(ServerLevel level, BlockPos pos, BlockState state, BlockHitResult result) {
         Vec3 out = Vec3.atLowerCornerOf(result.getDirection().getNormal());
@@ -246,7 +253,8 @@ public final class Impact {
                 DEBRIS_COUNT, DEBRIS_SPREAD, DEBRIS_SPREAD, DEBRIS_SPREAD, DEBRIS_SPEED);
         SoundType sound = state.getSoundType(level, pos, null);
         if (sparks(state, sound)) {
-            level.sendParticles(ParticleTypes.LAVA, at.x, at.y, at.z, SPARK_COUNT, 0.0, 0.0, 0.0, 0.0);
+            level.sendParticles(ParticleTypes.ELECTRIC_SPARK, at.x, at.y, at.z, SPARK_COUNT,
+                    SPARK_SPREAD, SPARK_SPREAD, SPARK_SPREAD, SPARK_SPEED);
         }
         level.playSound(null, pos, sound.getHitSound(), SoundSource.BLOCKS,
                 (sound.getVolume() + 1.0f) / 4.0f, sound.getPitch() * 0.8f);
