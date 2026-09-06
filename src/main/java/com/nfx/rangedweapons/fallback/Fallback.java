@@ -53,7 +53,10 @@ public final class Fallback {
      * The profiled bullet. Sized and tracked like a vanilla arrow: a quarter
      * block, sent to clients within four chunks, position resynced every
      * twenty ticks -- the same settings vanilla found sufficient for a fast,
-     * short-lived projectile.
+     * short-lived projectile. Never saved: a bullet is gone within seconds,
+     * and a chunk written mid-flight would rather forget it than persist it
+     * -- vanilla's arrow save also insists on writing a pickup item, which a
+     * bullet has none of.
      */
     public static final DeferredHolder<EntityType<?>, EntityType<ProfiledBullet>> BULLET =
             ENTITIES.register("bullet", () -> EntityType.Builder
@@ -61,6 +64,7 @@ public final class Fallback {
                     .sized(0.25f, 0.25f)
                     .clientTrackingRange(4)
                     .updateInterval(20)
+                    .noSave()
                     .build(RangedWeapons.id("bullet").toString()));
 
     /**

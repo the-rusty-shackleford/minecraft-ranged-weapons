@@ -45,9 +45,11 @@ import net.minecraft.world.phys.Vec3;
  * nothing can pick it up.
  *
  * <p>RI: {@code damage >= 0} and finite; {@code speed > 0} and finite;
- * {@code lifetimeTicks >= 1}. The loader-side constructor starts at the
- * harmless minimum -- no damage, gone next tick -- and the saved values
- * overwrite it, so a bullet that survives a world reload keeps flying.
+ * {@code lifetimeTicks >= 1}. The entity type is not saved (see
+ * {@link Fallback#BULLET}); the type-and-level constructor exists for the
+ * client, which builds the entity from the spawn packet, and starts at the
+ * harmless minimum. The save methods are kept complete so that an explicit
+ * copy of the entity, if a mod ever makes one, keeps its numbers.
  */
 public final class ProfiledBullet extends AbstractArrow {
 
