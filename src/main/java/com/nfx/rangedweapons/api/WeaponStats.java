@@ -39,7 +39,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * {@code fireRateTicks >= 1}; {@code damage >= 0} and finite;
  * {@code projectilesPerShot >= 1}; {@code spread >= 0} and finite;
  * {@code engagementRange > 0} and finite; {@code projectileSpeed > 0} and
- * finite; {@code projectileLifetimeTicks >= 1}. Enforced in the constructor
+ * finite; {@code projectileLifetimeTicks >= 1}; {@code knockback >= 0} and finite. Enforced in the constructor
  * so a profile that fails it is refused where it is built, with the field
  * named, rather than discovered as a mob that never fires. The codec carries
  * the same bounds, so a datapack that fails it is refused at load with the
@@ -53,11 +53,26 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
  * @param spread                  angular scatter per projectile, per the definition above
  * @param engagementRange         blocks at which a mob stops closing and starts shooting
  * @param projectileSpeed         blocks per tick
+ * @param knockback               the push a full hit gives, in the game's own units: a punch of one
+ *                                is the bow's Punch I, shared out among the shot's projectiles
  * @param projectileLifetimeTicks ticks before a projectile that hits nothing is gone
  */
 public record WeaponStats(int capacity, int reloadTicksPerRound, int fireRateTicks, float damage,
                           int projectilesPerShot, float spread, float engagementRange,
-                          float projectileSpeed, int projectileLifetimeTicks) {
+                          float projectileSpeed, int projectileLifetimeTicks, float knockback) {
+
+    /**
+     * The nine-field constructor of releases before 1.6: no knockback.
+     *
+     * @deprecated name the knockback; kept so a consumer built against 1.5 keeps linking
+     */
+    @Deprecated
+    public WeaponStats(int capacity, int reloadTicksPerRound, int fireRateTicks, float damage,
+                       int projectilesPerShot, float spread, float engagementRange,
+                       float projectileSpeed, int projectileLifetimeTicks) {
+        this(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot, spread, engagementRange,
+                projectileSpeed, projectileLifetimeTicks, 0.0f);
+    }
 
     /**
      * The datapack shape: nine required fields in snake_case, each bounded as
@@ -72,7 +87,8 @@ public record WeaponStats(int capacity, int reloadTicksPerRound, int fireRateTic
             Codec.floatRange(0.0f, Float.MAX_VALUE).fieldOf("spread").forGetter(WeaponStats::spread),
             Codec.floatRange(Float.MIN_VALUE, Float.MAX_VALUE).fieldOf("engagement_range").forGetter(WeaponStats::engagementRange),
             Codec.floatRange(Float.MIN_VALUE, Float.MAX_VALUE).fieldOf("projectile_speed").forGetter(WeaponStats::projectileSpeed),
-            Codec.intRange(1, Integer.MAX_VALUE).fieldOf("projectile_lifetime_ticks").forGetter(WeaponStats::projectileLifetimeTicks)
+            Codec.intRange(1, Integer.MAX_VALUE).fieldOf("projectile_lifetime_ticks").forGetter(WeaponStats::projectileLifetimeTicks),
+            Codec.floatRange(0.0f, Float.MAX_VALUE).optionalFieldOf("knockback", 0.0f).forGetter(WeaponStats::knockback)
     ).apply(i, WeaponStats::new));
 
     /** {@link #MAP_CODEC} as a standalone object codec. */
@@ -88,6 +104,7 @@ public record WeaponStats(int capacity, int reloadTicksPerRound, int fireRateTic
         finiteAtLeast("damage", damage, 0);
         atLeast("projectilesPerShot", projectilesPerShot, 1);
         finiteAtLeast("spread", spread, 0);
+        finiteAtLeast("knockback", knockback, 0);
         finiteAbove("engagementRange", engagementRange, 0);
         finiteAbove("projectileSpeed", projectileSpeed, 0);
         atLeast("projectileLifetimeTicks", projectileLifetimeTicks, 1);
@@ -124,37 +141,43 @@ public record WeaponStats(int capacity, int reloadTicksPerRound, int fireRateTic
         finiteAbove("spreadMultiplier", spreadMultiplier, 0);
         return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage * damageMultiplier,
                 projectilesPerShot, spread * spreadMultiplier, engagementRange, projectileSpeed,
-                projectileLifetimeTicks);
+                projectileLifetimeTicks, knockback);
     }
 
     /** effects: returns a copy with the given capacity; throws IAE if it is below one. */
     public WeaponStats withCapacity(int capacity) {
         return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot,
-                spread, engagementRange, projectileSpeed, projectileLifetimeTicks);
+                spread, engagementRange, projectileSpeed, projectileLifetimeTicks, knockback);
     }
 
     /** effects: returns a copy with the given damage; throws IAE if it is negative or not finite. */
     public WeaponStats withDamage(float damage) {
         return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot,
-                spread, engagementRange, projectileSpeed, projectileLifetimeTicks);
+                spread, engagementRange, projectileSpeed, projectileLifetimeTicks, knockback);
     }
 
     /** effects: returns a copy with the given fire rate; throws IAE if it is below one. */
     public WeaponStats withFireRateTicks(int fireRateTicks) {
         return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot,
-                spread, engagementRange, projectileSpeed, projectileLifetimeTicks);
+                spread, engagementRange, projectileSpeed, projectileLifetimeTicks, knockback);
     }
 
     /** effects: returns a copy with the given per-round reload; throws IAE if it is negative. */
     public WeaponStats withReloadTicksPerRound(int reloadTicksPerRound) {
         return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot,
-                spread, engagementRange, projectileSpeed, projectileLifetimeTicks);
+                spread, engagementRange, projectileSpeed, projectileLifetimeTicks, knockback);
     }
 
     /** effects: returns a copy with the given projectile count; throws IAE if it is below one. */
     public WeaponStats withProjectilesPerShot(int projectilesPerShot) {
         return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot,
-                spread, engagementRange, projectileSpeed, projectileLifetimeTicks);
+                spread, engagementRange, projectileSpeed, projectileLifetimeTicks, knockback);
+    }
+
+    /** effects: returns a copy with the given knockback; throws IAE if it is negative or not finite. */
+    public WeaponStats withKnockback(float knockback) {
+        return new WeaponStats(capacity, reloadTicksPerRound, fireRateTicks, damage, projectilesPerShot,
+                spread, engagementRange, projectileSpeed, projectileLifetimeTicks, knockback);
     }
 
     private static void atLeast(String field, int value, int min) {

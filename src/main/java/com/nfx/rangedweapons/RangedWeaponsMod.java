@@ -73,6 +73,7 @@ public final class RangedWeaponsMod {
 
     private static void registerDataMaps(RegisterDataMapTypesEvent event) {
         event.register(RangedWeapons.WEAPONS);
+        event.register(RangedWeapons.AMMO);
     }
 
     private static void onDataMapsUpdated(DataMapsUpdatedEvent event) {

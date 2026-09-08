@@ -1,0 +1,9 @@
+{
+  "values": {
+    "minecraft:gold_ingot": {
+      "projectiles_per_shot": 1,
+      "damage": 9.0,
+      "knockback": 0.0
+    }
+  }
+}

@@ -17,10 +17,12 @@
  */
 package com.nfx.rangedweapons.fallback;
 
+import com.nfx.rangedweapons.api.Falloff;
 import com.nfx.rangedweapons.api.RangedWeapon;
 import com.nfx.rangedweapons.api.RangedWeapons;
 import com.nfx.rangedweapons.api.Shot;
 import com.nfx.rangedweapons.api.WeaponProfile;
+import com.nfx.rangedweapons.api.WeaponStats;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -29,6 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -88,6 +91,34 @@ public final class ProfiledWeapon implements RangedWeapon {
     }
 
     /**
+     * effects: returns the profile's numbers with whatever the loaded round
+     * changes about them applied -- a round with no {@code rangedweapons:ammo}
+     * entry, or none recorded, changes nothing
+     */
+    @Override
+    public WeaponStats stats(ItemStack stack) {
+        WeaponStats base = profile().defaults();
+        return loadedAmmo(stack).map(RangedWeapons::ammoProfileOf).map(ammo -> ammo.applyTo(base)).orElse(base);
+    }
+
+    /** effects: returns the falloff the loaded round has, else the profile's */
+    public Optional<Falloff> falloff(ItemStack stack) {
+        Optional<Falloff> weapons = profile().falloff();
+        return loadedAmmo(stack).map(RangedWeapons::ammoProfileOf).map(ammo -> ammo.falloffOr(weapons)).orElse(weapons);
+    }
+
+    @Override
+    public Optional<Item> loadedAmmo(ItemStack stack) {
+        return Optional.ofNullable(stack.get(Fallback.LOADED_AMMO.get()));
+    }
+
+    @Override
+    public void load(ItemStack stack, int count, Item ammo) {
+        load(stack, count);
+        stack.set(Fallback.LOADED_AMMO.get(), ammo);
+    }
+
+    /**
      * effects: returns the rounds on the stack, clamped to the capacity so a
      * profile whose capacity shrank on reload still satisfies
      * {@code rounds <= capacity}
@@ -130,7 +161,8 @@ public final class ProfiledWeapon implements RangedWeapon {
             ProfiledBullet bullet = new ProfiledBullet(Fallback.BULLET.get(), shooter, level, stack,
                     shot.damage(), shot.speed(), shot.lifetimeTicks());
             bullet.setPos(origin.x, origin.y, origin.z);
-            profile().falloff().ifPresent(bullet::setFalloff);
+            falloff(stack).ifPresent(bullet::setFalloff);
+            bullet.setKnockback(shot.knockback());
             Vec3 direction = Spread.jitter(shot.direction(), shot.spread(), shooter.getRandom());
             bullet.shoot(direction.x, direction.y, direction.z, shot.speed(), 0.0f);
             level.addFreshEntity(bullet);

@@ -214,6 +214,73 @@ public final class FallbackGameTests {
         });
     }
 
+    @GameTest(template = "arena", timeoutTicks = 100)
+    public void everyPelletOfAShotCountsAgainstTheHurtCooldown(GameTestHelper helper) {
+        layFloor(helper);
+        ArmorStand shooter = helper.spawn(EntityType.ARMOR_STAND, SHOOTER);
+        IronGolem target = helper.spawnWithNoFreeWill(EntityType.IRON_GOLEM, TARGET);
+        // Six pellets of two, no spread, all arriving in one tick: twelve,
+        // where the game's own hurt cooldown would have let two through.
+        ItemStack stack = new ItemStack(Items.IRON_AXE);
+        RangedWeapon weapon = requireWeapon(helper, stack);
+        Vec3 aim = target.position().add(0, target.getBbHeight() * 0.5, 0).subtract(shooter.getEyePosition());
+        fire(helper, weapon, stack, shooter, aim);
+        helper.runAtTickTime(10, () -> {
+            float dealt = target.getMaxHealth() - target.getHealth();
+            helper.assertValueEqual(dealt, 12.0f, "damage from six pellets of two in one tick");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "arena", timeoutTicks = 100)
+    public void aHitPushesAlongTheLineOfFlight(GameTestHelper helper) {
+        layFloor(helper);
+        ArmorStand shooter = helper.spawn(EntityType.ARMOR_STAND, SHOOTER);
+        IronGolem target = helper.spawnWithNoFreeWill(EntityType.IRON_GOLEM, TARGET);
+        ItemStack stack = new ItemStack(Items.IRON_AXE);
+        RangedWeapon weapon = requireWeapon(helper, stack);
+        double before = target.getX();
+        Vec3 aim = target.position().add(0, target.getBbHeight() * 0.5, 0).subtract(shooter.getEyePosition());
+        fire(helper, weapon, stack, shooter, aim);
+        helper.runAtTickTime(20, () -> {
+            helper.assertTrue(target.getX() - before > 0.5, "the golem was pushed " + (target.getX() - before) + " along +X by a full hit of three");
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "arena", timeoutTicks = 100)
+    public void theLoadedRoundChangesWhatTheWeaponFires(GameTestHelper helper) {
+        layFloor(helper);
+        ArmorStand shooter = helper.spawn(EntityType.ARMOR_STAND, SHOOTER);
+        IronGolem target = helper.spawnWithNoFreeWill(EntityType.IRON_GOLEM, TARGET);
+        ItemStack stack = new ItemStack(Items.IRON_AXE);
+        RangedWeapon weapon = requireWeapon(helper, stack);
+        helper.assertTrue(weapon.loadedAmmo(stack).isEmpty(), "nothing loaded yet");
+        helper.assertValueEqual(weapon.stats(stack).projectilesPerShot(), 6, "buckshot by default");
+        // A gold ingot is the family's slug: one round of nine, no push.
+        weapon.load(stack, 2, Items.GOLD_INGOT);
+        helper.assertValueEqual(weapon.loadedAmmo(stack).orElseThrow(), Items.GOLD_INGOT, "the round loaded");
+        helper.assertValueEqual(weapon.stats(stack).projectilesPerShot(), 1, "one projectile with a slug");
+        helper.assertValueEqual(weapon.stats(stack).damage(), 9.0f, "the slug's damage");
+        helper.assertValueEqual(weapon.stats(stack).capacity(), 2, "the gun's own capacity");
+        double before = target.getX();
+        Vec3 aim = target.position().add(0, target.getBbHeight() * 0.5, 0).subtract(shooter.getEyePosition());
+        fire(helper, weapon, stack, shooter, aim);
+        // Two blocks a tick over five and a half: in flight on the first tick, home by the third.
+        helper.runAtTickTime(1, () -> helper.assertValueEqual(
+                helper.getLevel().getEntities(Fallback.BULLET.get(), helper.getBounds(), e -> true).size(), 1, "bullets in flight with a slug"));
+        helper.runAtTickTime(20, () -> {
+            helper.assertValueEqual(target.getMaxHealth() - target.getHealth(), 9.0f, "the slug's damage dealt");
+            helper.assertTrue(Math.abs(target.getX() - before) < 0.5, "no push from a slug that names none");
+            // Loading a count alone keeps the round; loading the native round forgets the slug.
+            weapon.load(stack, 1);
+            helper.assertValueEqual(weapon.loadedAmmo(stack).orElseThrow(), Items.GOLD_INGOT, "a count alone keeps the round");
+            weapon.load(stack, 2, Items.GOLD_NUGGET);
+            helper.assertValueEqual(weapon.stats(stack).projectilesPerShot(), 6, "buckshot again");
+            helper.succeed();
+        });
+    }
+
     private static void layFloor(GameTestHelper helper) {
         for (int x = 0; x < ARENA_SIZE; x++) {
             for (int z = 0; z < ARENA_SIZE; z++) {

@@ -1,6 +1,8 @@
 {
   "values": [
     "minecraft:flint",
-    "minecraft:arrow"
+    "minecraft:arrow",
+    "minecraft:gold_nugget",
+    "minecraft:gold_ingot"
   ]
 }

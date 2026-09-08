@@ -117,6 +117,47 @@ direction is the aim plus an independent uniform offset in `[-spread, +spread]`
 on each axis, renormalised. The fallback tier implements exactly that
 (`Spread.jitter`); a native implementation is expected to.
 
+`knockback` (optional, default 0) is the push a full hit gives, in the
+game's own units: 1 is the bow's Punch I. It is shared out among the shot's
+projectiles -- `Shot.knockback()` is one projectile's share -- so a shotgun
+that lands three of six pellets pushes half as hard as one that lands all
+six. The fallback bullet pushes along its line of flight, flat, with the
+touch of lift Punch gives.
+
+### What a round changes
+
+A weapon's profile describes it with its native round loaded. A round of
+the same family can change what it fires through the data map
+`rangedweapons:ammo`, at `data/rangedweapons/data_maps/item/ammo.json`,
+keyed by the ammunition item; every field is optional and the others stay
+the weapon's:
+
+```json
+{ "values": { "mymod:slug": {
+    "projectiles_per_shot": 1, "damage": 18.0, "spread": 0.01,
+    "engagement_range": 30.0, "projectile_speed": 4.0, "projectile_lifetime_ticks": 80,
+    "knockback": 3.0, "damage_falloff": { "start": 12.0, "end": 30.0, "floor": 0.4 } } } }
+```
+
+A store remembers the round it was last filled with: `load(stack, count,
+ammo)` records it and `loadedAmmo(stack)` answers it; `load(stack, count)`
+keeps whatever was recorded. The fallback weapon's `stats(stack)` is the
+profile with the loaded round's entry applied, so a consumer that builds
+its shots from `stats(stack)` fires slugs from a shotgun without knowing
+what a slug is. What is never the round's to change: the magazine's
+capacity, the fire rate and the reload time.
+
+### The damage a bullet deals
+
+The fallback bullet deals `rangedweapons:bullet` damage: a projectile's
+(`#minecraft:is_projectile`) that **bypasses the hurt cooldown**
+(`#minecraft:bypasses_cooldown`). The game gives a hurt entity ten ticks
+in which a second hit deals only its excess over the first, which turns
+six pellets arriving together into one pellet's worth and swallows two of
+every three rounds of a burst; with the tag, every pellet and every round
+counts, as a gun mod's players expect. Death messages are the
+`death.attack.rangedweapons.bullet` keys.
+
 ## What a bullet does to a block
 
 The fallback bullet leaves a mark. Every hit throws debris of the block's own

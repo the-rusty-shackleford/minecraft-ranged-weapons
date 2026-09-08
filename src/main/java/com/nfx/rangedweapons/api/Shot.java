@@ -37,9 +37,20 @@ import net.minecraft.world.phys.Vec3;
  * @param spread        per-axis uniform deviation, see {@link WeaponStats}
  * @param damage        damage each projectile deals
  * @param lifetimeTicks ticks before an unspent projectile is removed
+ * @param knockback     the push each projectile gives what it hits: a punch of one is the bow's Punch I
  */
 public record Shot(Vec3 origin, Vec3 direction, int count, float speed, float spread, float damage,
-                   int lifetimeTicks) {
+                   int lifetimeTicks, float knockback) {
+
+    /**
+     * The seven-field constructor of releases before 1.6: no knockback.
+     *
+     * @deprecated name the knockback; kept so a consumer built against 1.5 keeps linking
+     */
+    @Deprecated
+    public Shot(Vec3 origin, Vec3 direction, int count, float speed, float spread, float damage, int lifetimeTicks) {
+        this(origin, direction, count, speed, spread, damage, lifetimeTicks, 0.0f);
+    }
 
     private static final double UNIT_TOLERANCE = 1e-3;
 
@@ -68,6 +79,9 @@ public record Shot(Vec3 origin, Vec3 direction, int count, float speed, float sp
         if (lifetimeTicks < 1) {
             throw new IllegalArgumentException("lifetimeTicks must be >= 1, was " + lifetimeTicks);
         }
+        if (!(knockback >= 0) || Float.isInfinite(knockback)) {
+            throw new IllegalArgumentException("knockback must be finite and >= 0, was " + knockback);
+        }
     }
 
     /**
@@ -90,6 +104,7 @@ public record Shot(Vec3 origin, Vec3 direction, int count, float speed, float sp
             throw new IllegalArgumentException("direction must not be zero");
         }
         return new Shot(origin, direction.normalize(), stats.projectilesPerShot(), stats.projectileSpeed(),
-                stats.spread(), stats.damage(), stats.projectileLifetimeTicks());
+                stats.spread(), stats.damage(), stats.projectileLifetimeTicks(),
+                stats.knockback() / stats.projectilesPerShot());
     }
 }

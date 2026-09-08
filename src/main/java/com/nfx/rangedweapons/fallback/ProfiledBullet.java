@@ -19,6 +19,8 @@ package com.nfx.rangedweapons.fallback;
 
 import net.minecraft.nbt.CompoundTag;
 import com.nfx.rangedweapons.api.Falloff;
+import com.nfx.rangedweapons.api.RangedWeapons;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
@@ -65,6 +67,9 @@ public final class ProfiledBullet extends AbstractArrow {
     private static final String TAG_SPEED = "Speed";
     private static final String TAG_LIFETIME = "LifetimeTicks";
     private static final String TAG_FALLOFF = "Falloff";
+    private static final String TAG_KNOCKBACK = "Knockback";
+    /** Blocks per tick of push per unit of knockback: the bow's Punch is 0.6 a level. */
+    private static final double PUSH_PER_UNIT = 0.6;
     private static final String TAG_FIRED_FROM = "FiredFrom";
 
     private float damage = 0.0f;
@@ -73,6 +78,7 @@ public final class ProfiledBullet extends AbstractArrow {
     /** How damage falls with distance flown, if it does. */
     @Nullable
     private Falloff falloff = null;
+    private float knockback = 0.0f;
     /** Where the flight began, for the distance; set on the first move if not by the shooter. */
     @Nullable
     private Vec3 firedFrom = null;
@@ -148,6 +154,23 @@ public final class ProfiledBullet extends AbstractArrow {
     }
 
     /**
+     * effects: sets the push this bullet gives what it hits, in the game's
+     * own units (Punch I is one), along its line of flight<br>
+     * throws: {@link IllegalArgumentException} if negative or not finite
+     */
+    public void setKnockback(float knockback) {
+        if (!(knockback >= 0) || Float.isInfinite(knockback)) {
+            throw new IllegalArgumentException("knockback must be finite and >= 0, was " + knockback);
+        }
+        this.knockback = knockback;
+    }
+
+    /** effects: returns the push this bullet gives what it hits */
+    public float knockback() {
+        return knockback;
+    }
+
+    /**
      * effects: returns what a hit deals here: {@link #damage()} scaled by
      * the falloff for the distance flown from where the bullet was fired,
      * or all of it with no falloff
@@ -184,16 +207,32 @@ public final class ProfiledBullet extends AbstractArrow {
 
     /**
      * Deals {@link #damageHere()} -- the profile's damage, less the falloff
-     * for the distance flown -- to the entity hit, credits the owner with
-     * the hit for its AI's sake, and is gone.
+     * for the distance flown -- to the entity hit as {@code rangedweapons:bullet}
+     * damage, which bypasses the hurt cooldown so every pellet of a shot and
+     * every round of a burst counts (a second hit within ten ticks of the
+     * first deals only its excess otherwise: six pellets would deal one
+     * pellet's worth), pushes it by the bullet's knockback, credits the owner
+     * with the hit for its AI's sake, and is gone.
      */
     @Override
     protected void onHitEntity(EntityHitResult result) {
         Entity target = result.getEntity();
         Entity owner = this.getOwner();
-        DamageSource source = this.damageSources().arrow(this, owner != null ? owner : this);
-        if (target.hurt(source, this.damageHere()) && owner instanceof LivingEntity livingOwner) {
-            livingOwner.setLastHurtMob(target);
+        DamageSource source = new DamageSource(
+                this.level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(RangedWeapons.BULLET),
+                this, owner != null ? owner : this);
+        if (target.hurt(source, this.damageHere())) {
+            if (owner instanceof LivingEntity livingOwner) {
+                livingOwner.setLastHurtMob(target);
+            }
+            // The push, as the bow's Punch gives it: along the line of flight,
+            // flat, with a touch of lift so it reads.
+            if (knockback > 0.0f && target instanceof LivingEntity living) {
+                Vec3 push = this.getDeltaMovement().multiply(1.0, 0.0, 1.0).normalize().scale(knockback * PUSH_PER_UNIT);
+                if (push.lengthSqr() > 0.0) {
+                    living.push(push.x, 0.1, push.z);
+                }
+            }
         }
         this.discard();
     }
@@ -225,6 +264,7 @@ public final class ProfiledBullet extends AbstractArrow {
     public void addAdditionalSaveData(CompoundTag tag) {
         super.addAdditionalSaveData(tag);
         tag.putFloat(TAG_DAMAGE, this.damage);
+        tag.putFloat(TAG_KNOCKBACK, this.knockback);
         tag.putFloat(TAG_SPEED, this.speed);
         tag.putInt(TAG_LIFETIME, this.lifetimeTicks);
         if (this.falloff != null) {
@@ -241,6 +281,7 @@ public final class ProfiledBullet extends AbstractArrow {
         // Clamped back into the RI: a hand-edited or truncated tag must not
         // produce a bullet that can never be removed or that heals.
         this.damage = Math.max(0.0f, tag.getFloat(TAG_DAMAGE));
+        this.knockback = Math.max(0.0f, tag.getFloat(TAG_KNOCKBACK));
         this.speed = Math.max(Float.MIN_NORMAL, tag.getFloat(TAG_SPEED));
         this.lifetimeTicks = Math.max(1, tag.getInt(TAG_LIFETIME));
         this.falloff = tag.contains(TAG_FALLOFF)

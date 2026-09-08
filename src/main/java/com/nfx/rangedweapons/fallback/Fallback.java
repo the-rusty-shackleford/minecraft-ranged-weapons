@@ -20,6 +20,8 @@ package com.nfx.rangedweapons.fallback;
 import com.mojang.serialization.Codec;
 import com.nfx.rangedweapons.api.RangedWeapons;
 import net.minecraft.core.component.DataComponentType;
+import net.minecraft.world.item.Item;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.world.entity.EntityType;
@@ -48,6 +50,16 @@ public final class Fallback {
             COMPONENTS.registerComponentType("rounds", builder -> builder
                     .persistent(Codec.intRange(0, Integer.MAX_VALUE))
                     .networkSynchronized(ByteBufCodecs.VAR_INT));
+
+    /**
+     * The round loaded in a profiled weapon, on the stack: the item it was
+     * last filled with, which decides what it fires when that round has a
+     * {@code rangedweapons:ammo} entry. Absent until a reload names one.
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Item>> LOADED_AMMO =
+            COMPONENTS.registerComponentType("loaded_ammo", builder -> builder
+                    .persistent(BuiltInRegistries.ITEM.byNameCodec())
+                    .networkSynchronized(ByteBufCodecs.registry(Registries.ITEM)));
 
     /**
      * The profiled bullet. Sized and tracked like a vanilla arrow: a quarter

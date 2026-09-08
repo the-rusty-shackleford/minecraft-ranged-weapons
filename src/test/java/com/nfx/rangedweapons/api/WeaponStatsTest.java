@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
  *   engagementRange:          tiny positive / 0 -> IAE / infinite -> IAE
  *   projectileSpeed:          tiny positive / 0 -> IAE
  *   projectileLifetimeTicks:  1 / 0 -> IAE
+ *   knockback:                0 (accepted, and the nine-field constructor's default) / 3 / negative -> IAE / NaN -> IAE
  * fullReloadTicks:
  *   capacity 1 / n; reload 0 / n; a product that overflows -> ArithmeticException
  * scaled:
@@ -161,6 +162,17 @@ final class WeaponStatsTest {
         assertRejects("damageMultiplier", () -> revolver().scaled(Float.NaN, 1.0f));
         assertRejects("spreadMultiplier", () -> revolver().scaled(1.0f, 0.0f));
         assertRejects("spreadMultiplier", () -> revolver().scaled(1.0f, -1.0f));
+    }
+
+    @Test
+    void knockbackIsZeroUnlessNamedAndNeverNegative() {
+        assertEquals(0.0f, revolver().knockback(), "the nine-field constructor is the pre-1.6 profile: no push");
+        assertEquals(3.0f, revolver().withKnockback(3.0f).knockback());
+        assertEquals(3.0f, new WeaponStats(6, 10, 15, 6.0f, 1, 0.045f, 16.0f, 4.0f, 100, 3.0f).knockback());
+        assertRejects("knockback", () -> revolver().withKnockback(-0.1f));
+        assertRejects("knockback", () -> revolver().withKnockback(Float.NaN));
+        assertEquals(3.0f, revolver().withKnockback(3.0f).scaled(2.0f, 1.0f).knockback(), "scaling keeps the push");
+        assertEquals(3.0f, revolver().withKnockback(3.0f).withDamage(1.0f).knockback(), "a wither keeps the push");
     }
 
     // --- withX ------------------------------------------------------------------

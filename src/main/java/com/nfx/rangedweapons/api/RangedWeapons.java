@@ -20,7 +20,9 @@ package com.nfx.rangedweapons.api;
 import com.nfx.rangedweapons.fallback.ProfiledWeapon;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.capabilities.ItemCapability;
@@ -135,6 +137,28 @@ public final class RangedWeapons {
             DataMapType.builder(id("weapons"), Registries.ITEM, WeaponProfile.CODEC)
                     .synced(WeaponProfile.CODEC, false)
                     .build();
+
+    /**
+     * The {@code rangedweapons:ammo} data map: what a round of ammunition
+     * changes about the weapon that fires it. Keyed by the ammunition item;
+     * a round without an entry changes nothing.
+     */
+    public static final DataMapType<Item, AmmoProfile> AMMO =
+            DataMapType.builder(id("ammo"), Registries.ITEM, AmmoProfile.CODEC)
+                    .synced(AmmoProfile.CODEC, false)
+                    .build();
+
+    /** The damage a bullet deals: a projectile's, bypassing the hurt cooldown so every pellet counts. */
+    public static final ResourceKey<DamageType> BULLET = ResourceKey.create(Registries.DAMAGE_TYPE, id("bullet"));
+
+    /**
+     * effects: returns what {@code ammo} changes about the weapon that fires
+     * it: its {@code rangedweapons:ammo} entry, or nothing
+     */
+    public static AmmoProfile ammoProfileOf(Item ammo) {
+        AmmoProfile profile = BuiltInRegistries.ITEM.wrapAsHolder(ammo).getData(AMMO);
+        return profile != null ? profile : AmmoProfile.NONE;
+    }
 
     /**
      * effects: returns the id {@code rangedweapons:<path>}

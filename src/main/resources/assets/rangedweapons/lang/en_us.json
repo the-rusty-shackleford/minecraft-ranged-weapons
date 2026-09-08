@@ -3,5 +3,8 @@
   "ammo_family.rangedweapons.ammo/small": "small rounds",
   "ammo_family.rangedweapons.ammo/medium": "medium rounds",
   "ammo_family.rangedweapons.ammo/large": "large rounds",
-  "ammo_family.rangedweapons.ammo/shell": "shells"
+  "ammo_family.rangedweapons.ammo/shell": "shells",
+  "death.attack.rangedweapons.bullet": "%1$s was shot by %2$s",
+  "death.attack.rangedweapons.bullet.item": "%1$s was shot by %2$s using %3$s",
+  "death.attack.rangedweapons.bullet.player": "%1$s was shot by %2$s while trying to escape %3$s"
 }

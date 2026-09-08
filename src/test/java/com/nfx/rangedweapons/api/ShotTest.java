@@ -131,4 +131,13 @@ final class ShotTest {
         assertEquals(stats.damage(), shot.damage());
         assertEquals(stats.projectileLifetimeTicks(), shot.lifetimeTicks());
     }
+
+    @Test
+    void thePushIsSharedAmongTheProjectiles() {
+        WeaponStats shotgun = stats().withProjectilesPerShot(6).withKnockback(3.0f);
+        Shot shot = Shot.of(shotgun, new Vec3(0, 0, 0), new Vec3(1, 0, 0));
+        assertEquals(0.5f, shot.knockback(), 1e-6f, "three units over six pellets");
+        assertEquals(0.0f, Shot.of(stats(), new Vec3(0, 0, 0), new Vec3(1, 0, 0)).knockback(), "no push unless the stats say");
+        assertThrows(IllegalArgumentException.class, () -> new Shot(new Vec3(0, 0, 0), new Vec3(1, 0, 0), 1, 1.0f, 0.0f, 1.0f, 1, -1.0f));
+    }
 }

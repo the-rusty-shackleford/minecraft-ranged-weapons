@@ -65,6 +65,21 @@
         "end": 10.0,
         "floor": 0.25
       }
+    },
+    "minecraft:iron_axe": {
+      "class": "shotgun",
+      "capacity": 2,
+      "reload_ticks_per_round": 5,
+      "fire_rate_ticks": 10,
+      "damage": 2.0,
+      "projectiles_per_shot": 6,
+      "spread": 0.0,
+      "engagement_range": 16.0,
+      "projectile_speed": 2.0,
+      "projectile_lifetime_ticks": 100,
+      "knockback": 3.0,
+      "ammo": "minecraft:gold_nugget",
+      "ammo_family": "#rangedweapons:ammo/small"
     }
   }
 }

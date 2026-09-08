@@ -17,7 +17,10 @@
  */
 package com.nfx.rangedweapons.api;
 
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.Optional;
 
 /**
  * Something that holds a whole number of rounds: a gun's internal magazine,
@@ -77,4 +80,32 @@ public interface AmmoStore {
      * @param count the rounds it should hold afterwards
      */
     void load(ItemStack stack, int count);
+
+    /**
+     * effects: returns the round loaded now -- the item the store was last
+     * filled with -- or empty if it has never been told, as a store filled
+     * by a consumer that predates 1.6 or by {@link #load(ItemStack, int)}
+     * has not been; a weapon then fires as with its native round
+     *
+     * @param stack a stack of this store's item
+     * @return the loaded round
+     */
+    default Optional<Item> loadedAmmo(ItemStack stack) {
+        return Optional.empty();
+    }
+
+    /**
+     * requires: {@code 0 <= count <= capacity(stack)}<br>
+     * effects: sets the round count and records {@code ammo} as the round
+     * loaded, so what the store fires can be looked up from it (a slug in a
+     * shotgun); by default loads the count and forgets the round<br>
+     * throws: {@link IllegalArgumentException} if the count is out of range
+     *
+     * @param stack a stack of this store's item
+     * @param count the new round count
+     * @param ammo  the round loaded
+     */
+    default void load(ItemStack stack, int count, Item ammo) {
+        load(stack, count);
+    }
 }
