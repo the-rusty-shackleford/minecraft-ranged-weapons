@@ -25,3 +25,4 @@ thought and someone later would want to know *why*.
 | D-0007 | A block shot to pieces drops nothing |
 | D-0008 | Ammunition is a family tag for what loads and an item for what the weapon's own round is |
 | D-0009 | Bullets bypass the hurt cooldown, push by a shared-out knockback, and a round may change what a weapon fires |
+| D-0010 | Grip is optional synchronized profile data, independent of combat class |

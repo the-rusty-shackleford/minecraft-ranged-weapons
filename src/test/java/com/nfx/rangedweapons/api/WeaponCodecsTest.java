@@ -61,6 +61,7 @@ import net.minecraft.resources.ResourceLocation;
  *   minimal:      stats only -> class UNCLASSIFIED, every optional empty
  *   encode keys:  a full profile encodes "class" and the four ids at the top level
  *   bad class:    an invalid class string fails the whole decode
+ *   grip:         one_handed / two_handed round-trip; unknown spelling is refused
  * </pre>
  */
 final class WeaponCodecsTest {
@@ -173,6 +174,7 @@ final class WeaponCodecsTest {
         assertFalse(profile.shotSound().isPresent());
         assertFalse(profile.farShotSound().isPresent());
         assertFalse(profile.falloff().isPresent());
+        assertFalse(profile.grip().isPresent(), "old profiles do not acquire a guessed grip");
     }
 
     @Test
@@ -217,5 +219,28 @@ final class WeaponCodecsTest {
         JsonObject json = statsJson();
         json.addProperty("class", "Side Arm");
         assertTrue(decodeError(WeaponProfile.CODEC, json).contains("Side Arm"));
+    }
+
+    @Test
+    void declaredGripSurvivesTheSyncedProfileCodec() {
+        for (String grip : new String[] {"one_handed", "two_handed"}) {
+            JsonObject json = statsJson();
+            json.addProperty("grip", grip);
+            JsonObject encoded = encode(WeaponProfile.CODEC, decode(WeaponProfile.CODEC, json)).getAsJsonObject();
+            assertTrue(encoded.has("grip"), "a grip must survive the server-to-client profile codec");
+            assertEquals(grip, encoded.get("grip").getAsString());
+        }
+    }
+
+    @Test
+    void theOldProviderConstructorLeavesTheGripUndeclared() {
+        assertTrue(fullProfile().grip().isEmpty());
+    }
+
+    @Test
+    void aMisspelledGripIsRefusedRatherThanSilentlyLosingThePose() {
+        JsonObject json = statsJson();
+        json.addProperty("grip", "onehanded");
+        assertTrue(decodeError(WeaponProfile.CODEC, json).contains("onehanded"));
     }
 }

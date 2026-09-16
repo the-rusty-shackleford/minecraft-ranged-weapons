@@ -41,6 +41,9 @@ same bounds, so a bad datapack is refused at load naming the field.
 
 ## How it is verified
 
+1.7.0 is local and unreleased (2026-09-16): optional synchronized grip data,
+with the previous constructor retained for providers (D-0010). No release go.
+
 `./gradlew check`: plain JUnit against everything pure (no game booted) and
 gametests on a headless server for everything that needs a registry — the
 fallback bullet hitting for exactly the profile's damage, less its falloff

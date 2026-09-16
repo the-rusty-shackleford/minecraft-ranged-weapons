@@ -19,6 +19,7 @@ package com.nfx.rangedweapons.gametest;
 
 import com.nfx.rangedweapons.RangedWeaponsMod;
 import com.nfx.rangedweapons.api.RangedWeapons;
+import com.nfx.rangedweapons.api.Grip;
 import com.nfx.rangedweapons.fallback.ProfiledWeapon;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
@@ -38,6 +39,8 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
  * capability declined and profile / profile only / neither / empty stack.
  * Store: store capability only / a native weapon / a profiled weapon /
  * neither / empty stack.
+ * Grip: native declaration wins over conflicting profile; declined native
+ * falls through to profile; undeclared legacy profile stays absent.
  */
 @GameTestHolder(RangedWeaponsMod.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -77,6 +80,19 @@ public final class PrecedenceGameTests {
                 "a profiled weapon is its own store");
         helper.assertTrue(RangedWeapons.ammoStore(new ItemStack(Items.DIAMOND)) == null, "neither: no store");
         helper.assertTrue(RangedWeapons.ammoStore(ItemStack.EMPTY) == null, "the empty stack: no store");
+        helper.succeed();
+    }
+
+    @GameTest(template = "arena")
+    public void gripFollowsTheResolvedProviderWithoutGuessingFromClass(GameTestHelper helper) {
+        ItemStack feather = new ItemStack(Items.FEATHER);
+        helper.assertTrue(RangedWeapons.resolve(feather).profile().grip().orElseThrow() == Grip.ONE_HANDED,
+                "the native provider's grip beats the conflicting data profile");
+        feather.set(DataComponents.CUSTOM_NAME, Component.literal("declined"));
+        helper.assertTrue(RangedWeapons.resolve(feather).profile().grip().orElseThrow() == Grip.TWO_HANDED,
+                "a declined native provider uses the data profile's grip");
+        helper.assertTrue(RangedWeapons.resolve(new ItemStack(Items.STICK)).profile().grip().isEmpty(),
+                "a legacy sidearm profile without grip does not invent a pose");
         helper.succeed();
     }
 }

@@ -64,6 +64,15 @@ in snake_case, four optional ids -- `ammo`, `magazine`, `shot_sound`,
 the field. An id that resolves to nothing is reported once per reload,
 naming the weapon, the field and what will silently not happen.
 
+Since 1.7, optional `"grip": "one_handed"` or `"grip": "two_handed"`
+declares the hold independently of combat class. A missing grip preserves a
+consumer's existing behavior; an unknown spelling fails decoding. The same
+profile is synchronized to clients. Consumers read the resolved provider's
+profile, so native capability precedence still applies. Existing providers'
+eight-argument `WeaponProfile` constructor remains available, leaving grip absent.
+The `Grip` vocabulary compiles in the JDK-only `domain` source set; its codec
+stays in the Minecraft adapter.
+
 `damage_falloff` is `{"start": 5.0, "end": 18.0, "floor": 0.2}`: a round
 deals full damage up to `start` blocks flown, the `floor` fraction from
 `end` on, and a straight line between. The fallback bullet measures from

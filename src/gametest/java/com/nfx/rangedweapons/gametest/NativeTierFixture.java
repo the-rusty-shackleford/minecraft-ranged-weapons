@@ -19,6 +19,7 @@ package com.nfx.rangedweapons.gametest;
 
 import com.nfx.rangedweapons.RangedWeaponsMod;
 import com.nfx.rangedweapons.api.AmmoStore;
+import com.nfx.rangedweapons.api.Grip;
 import com.nfx.rangedweapons.api.RangedWeapon;
 import com.nfx.rangedweapons.api.RangedWeapons;
 import com.nfx.rangedweapons.api.Shot;
@@ -53,7 +54,7 @@ public final class NativeTierFixture {
         private final WeaponProfile profile = new WeaponProfile(WeaponClass.get("fixture"),
                 new WeaponStats(1, 0, 1, 0.0f, 1, 0.0f, 1.0f, 1.0f, 1),
                 Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.of(Grip.ONE_HANDED));
 
         @Override
         public WeaponProfile profile() {

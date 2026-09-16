@@ -18,6 +18,7 @@
 package com.nfx.rangedweapons.api;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -56,6 +57,8 @@ import java.util.Optional;
  * member to be that. A weapon with a family accepts the family; one
  * without accepts only its native round; one with neither loads nothing.
  *
+ * <p>AF: one item's default combat facts and optional presentation declaration;
+ * the profile does not represent a particular stack's live aim or reload state.
  * <p>RI: no field is null. Enforced in the constructor; the {@code Optional}s
  * express absence, a null {@code Optional} is a bug.
  *
@@ -67,12 +70,22 @@ import java.util.Optional;
  * @param shotSound    the report heard near the shooter, if any
  * @param farShotSound the muffled report heard at a distance, if any
  * @param falloff      how damage falls with distance flown, if it does
+ * @param grip         the ordinary hold; absent leaves the consumer's existing hold alone
  */
 public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
                             Optional<ResourceLocation> ammoItem, Optional<TagKey<Item>> ammoFamily,
                             Optional<ResourceLocation> magazineItem,
                             Optional<ResourceLocation> shotSound, Optional<ResourceLocation> farShotSound,
-                            Optional<Falloff> falloff) {
+                            Optional<Falloff> falloff, Optional<Grip> grip) {
+
+    private static final Codec<Grip> GRIP_CODEC = Codec.STRING.comapFlatMap(name -> switch (name) {
+        case "one_handed" -> DataResult.success(Grip.ONE_HANDED);
+        case "two_handed" -> DataResult.success(Grip.TWO_HANDED);
+        default -> DataResult.error(() -> "Unknown grip: " + name + "; expected one_handed or two_handed");
+    }, grip -> switch (grip) {
+        case ONE_HANDED -> "one_handed";
+        case TWO_HANDED -> "two_handed";
+    });
 
     /** The datapack shape described above. */
     public static final Codec<WeaponProfile> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -83,17 +96,32 @@ public record WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
             ResourceLocation.CODEC.optionalFieldOf("magazine").forGetter(WeaponProfile::magazineItem),
             ResourceLocation.CODEC.optionalFieldOf("shot_sound").forGetter(WeaponProfile::shotSound),
             ResourceLocation.CODEC.optionalFieldOf("far_shot_sound").forGetter(WeaponProfile::farShotSound),
-            Falloff.CODEC.optionalFieldOf("damage_falloff").forGetter(WeaponProfile::falloff)
+            Falloff.CODEC.optionalFieldOf("damage_falloff").forGetter(WeaponProfile::falloff),
+            GRIP_CODEC.optionalFieldOf("grip").forGetter(WeaponProfile::grip)
     ).apply(i, WeaponProfile::new));
 
     /**
+     * requires: none. effects: constructs the immutable profile.
      * @throws IllegalArgumentException if any field is null
      */
     public WeaponProfile {
         if (weaponClass == null || defaults == null || ammoItem == null || ammoFamily == null || magazineItem == null
-                || shotSound == null || farShotSound == null || falloff == null) {
+                || shotSound == null || farShotSound == null || falloff == null || grip == null) {
             throw new IllegalArgumentException("no field of a WeaponProfile may be null");
         }
+    }
+
+    /**
+     * requires: no argument is null.
+     * effects: constructs a profile with no grip declaration. Retains the constructor
+     * descriptor used by already compiled 1.x providers.
+     * @throws IllegalArgumentException if any argument is null
+     */
+    public WeaponProfile(WeaponClass weaponClass, WeaponStats defaults,
+                         Optional<ResourceLocation> ammoItem, Optional<TagKey<Item>> ammoFamily,
+                         Optional<ResourceLocation> magazineItem, Optional<ResourceLocation> shotSound,
+                         Optional<ResourceLocation> farShotSound, Optional<Falloff> falloff) {
+        this(weaponClass, defaults, ammoItem, ammoFamily, magazineItem, shotSound, farShotSound, falloff, Optional.empty());
     }
 
     /**

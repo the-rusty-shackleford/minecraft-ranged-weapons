@@ -29,6 +29,7 @@ repositories {
 // fallback tier's component, entity and bullet -- is tested in `gametest`,
 // on a real headless server, against the real backend.
 sourceSets {
+    domain
     gametest
 }
 
@@ -77,6 +78,7 @@ neoForge {
 
     mods {
         "${mod_id}" {
+            sourceSet(sourceSets.domain)
             sourceSet(sourceSets.main)
             sourceSet(sourceSets.gametest)
         }
@@ -95,6 +97,9 @@ configurations {
 }
 
 dependencies {
+    implementation sourceSets.domain.output
+    testImplementation sourceSets.domain.output
+    gametestImplementation sourceSets.domain.output
     gametestImplementation sourceSets.main.output
 
     // Plain JUnit 5. Gradle 9 no longer injects the platform launcher, so it
@@ -102,6 +107,11 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
     testRuntimeOnly    'org.junit.jupiter:junit-jupiter-engine:5.9.2'
     testRuntimeOnly    'org.junit.platform:junit-platform-launcher:1.9.2'
+}
+
+// The grip vocabulary compiles against the JDK alone and ships with the contract.
+jar {
+    from sourceSets.domain.output
 }
 
 tasks.named('test', Test) {

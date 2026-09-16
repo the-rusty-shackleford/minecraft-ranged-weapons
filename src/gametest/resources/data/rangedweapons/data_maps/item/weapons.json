@@ -39,6 +39,7 @@
       "projectile_lifetime_ticks": 10
     },
     "minecraft:feather": {
+      "grip": "two_handed",
       "capacity": 1,
       "reload_ticks_per_round": 5,
       "fire_rate_ticks": 10,
