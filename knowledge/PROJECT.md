@@ -66,3 +66,11 @@ own "All N required tests passed" line; the exit code alone is not trusted.
 
 AGPL-3.0-or-later, deliberately, including on the interface
 (`decisions/D-0003.md`).
+
+
+## Release approval - 2026-09-16
+
+Rusty approved the final review, completing their earlier conditional release go.
+Version 1.7.0 is cleared for publication in pack 1.35.0 after the clean
+release build and asset verification. This supersedes the earlier release holds
+and pending presentation/listening review recorded above.
