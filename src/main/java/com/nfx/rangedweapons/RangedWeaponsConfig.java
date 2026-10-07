@@ -23,12 +23,12 @@ import net.neoforged.neoforge.common.ModConfigSpec;
  * The protocol's common config, {@code config/rangedweapons-common.toml}:
  * what the fallback tier's bullets do to blocks. The numbers are the two
  * knobs of {@link com.nfx.rangedweapons.fallback.Impact}'s rules; the policy
- * says whose bullets may break anything at all.
+ * says whose bullets may shatter glass or crack anything at all.
  */
 public final class RangedWeaponsConfig {
     private RangedWeaponsConfig() {}
 
-    /** Whose bullets may break blocks. */
+    /** Whose bullets may shatter glass and crack other blocks. */
     public enum BreakBlocks {
         /** Players' bullets, each break offered to claim and protection mods as a block-break event. */
         PLAYERS,
@@ -45,15 +45,16 @@ public final class RangedWeaponsConfig {
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
-        builder.comment("What bullets do to the blocks they hit.").push("bullets");
+        builder.comment("What bullets do to the blocks they hit. Only #rangedweapons:shatters (glass, panes, lanterns,",
+                        "lamps) ever breaks, on the first hit; every other block only cracks.").push("bullets");
         BREAK_BLOCKS = builder
-                .comment("Whose bullets may break blocks: PLAYERS (each break is offered to protection mods),",
-                        "EVERYONE (mobs too, under the mobGriefing rule), or NOBODY.")
+                .comment("Whose bullets may shatter glass and crack blocks: PLAYERS (each hit is offered to protection",
+                        "mods as a block-break event), EVERYONE (mobs too, under the mobGriefing rule), or NOBODY.")
                 .defineEnum("breakBlocks", BreakBlocks.PLAYERS);
         HEALTH_PER_HARDNESS = builder
-                .comment("A block takes this much bullet damage per point of its hardness before it breaks.",
-                        "At 15: glass (0.3) goes to one round of five, stone (1.5) takes five, an iron block (5) fourteen.",
-                        "Damage is remembered for 20 seconds after the last hit, then the block heals.")
+                .comment("A block takes this much bullet damage per point of its hardness to show its last crack; it never breaks.",
+                        "At 15: stone (1.5) is fully cracked by five rounds of five, an iron block (5) by fifteen.",
+                        "Damage is remembered for 20 seconds after the last hit, then the cracks heal.")
                 .defineInRange("healthPerHardness", 15.0D, 0.1D, 10000.0D);
         BULLETPROOF_HARDNESS = builder
                 .comment("Blocks at or above this hardness never break: obsidian, ancient debris, netherite, ender chests at 20.",

@@ -172,22 +172,30 @@ counts, as a gun mod's players expect. Death messages are the
 The fallback bullet leaves a mark. Every hit throws debris of the block's own
 texture back from the face, a few small sparks too if the block is stone or metal, and
 plays the block's hit sound. Then, if the shooter is allowed to, the hit
-counts toward breaking the block. A block shot to pieces is destroyed, not
-mined: it drops nothing (a container still spills what it held).
+shatters glass or cracks anything else (D-0011).
 
-A block's health is its hardness times `healthPerHardness` (15 by default),
-so the numbers the game already has decide: glass at 0.3 shatters at one
-round of five, stone at 1.5 takes five, an iron block at 5 fifteen. Damage is
-remembered per block for twenty seconds after the last hit, showing as the
-vanilla crack stages, then the block heals. Blocks at or above
+Only what is in `#rangedweapons:shatters` ever breaks: glass and panes of any
+colour (the `c:glass_blocks` and `c:glass_panes` tags, so any mod's glass),
+lanterns and soul lanterns (with Amendments' wall lanterns, Bosses'Rise's
+ship lantern and Dusty Decorations' nautilus lantern when those mods are
+present), sea lanterns, glowstone and redstone lamps. One hit from any
+weapon does it, whatever the block's hardness. A block shot out is
+destroyed, not mined: it drops nothing.
+
+Every other block only cracks, and never breaks. A block's health is its
+hardness times `healthPerHardness` (15 by default), the damage that brings it
+to the last of the vanilla crack stages, so the numbers the game already has
+pace the cracks: stone at 1.5 is fully cracked by five rounds of five, an
+iron block at 5 by fifteen. Damage is remembered per block for twenty
+seconds after the last hit, then the cracks heal. A block with no hardness
+(slime, TNT) shows no cracks at all. Blocks at or above
 `bulletproofHardness` (20: obsidian, ancient debris, netherite, an ender
 chest), blocks with negative hardness (bedrock, command blocks) and anything
-in `#rangedweapons:bulletproof` never break; anything in
-`#rangedweapons:shatters` (glass, panes, ice, glowstone) goes on the first
-hit whatever its hardness. Both tags are a datapack's to extend.
+in `#rangedweapons:bulletproof` are not even marked. Both tags are a
+datapack's to extend.
 
-Whose bullets may break anything is `breakBlocks` in
-`config/rangedweapons-common.toml`: `PLAYERS` (the default; each break is
+Whose bullets may shatter or crack anything is `breakBlocks` in
+`config/rangedweapons-common.toml`: `PLAYERS` (the default; each hit is
 first offered to protection and claim mods as the ordinary block-break event,
 and spawn protection holds), `EVERYONE` (mobs too, under the `mobGriefing`
 rule), or `NOBODY` (debris and sound only). A mob armed through the protocol

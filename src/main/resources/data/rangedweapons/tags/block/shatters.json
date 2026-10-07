@@ -2,10 +2,14 @@
   "values": [
     "#c:glass_blocks",
     "#c:glass_panes",
-    "minecraft:ice",
-    "minecraft:frosted_ice",
     "minecraft:sea_lantern",
     "minecraft:glowstone",
-    "minecraft:redstone_lamp"
+    "minecraft:redstone_lamp",
+    "minecraft:lantern",
+    "minecraft:soul_lantern",
+    {"id": "amendments:wall_lantern", "required": false},
+    {"id": "amendments:wall_soul_lantern", "required": false},
+    {"id": "block_factorys_bosses:ship_lantern", "required": false},
+    {"id": "dustydecorations:nautilus_lantern", "required": false}
   ]
 }

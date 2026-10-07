@@ -20,9 +20,10 @@ thought and someone later would want to know *why*.
 | D-0002 | The fallback tier lives inside the protocol mod |
 | D-0003 | AGPL-3.0-or-later on the protocol itself, not LGPL |
 | D-0004 | Profiles reference items and sounds by id; the loud failure is restored at reload |
-| D-0005 | Bullets break blocks by hardness, players by default, mobs only if the server says (drops amended by D-0007) |
+| D-0005 | Bullets break blocks by hardness, players by default, mobs only if the server says (drops amended by D-0007; what breaks superseded by D-0011) |
 | D-0006 | Guns opt out of Hold My Items by writing its config, until it takes a tag |
 | D-0007 | A block shot to pieces drops nothing |
 | D-0008 | Ammunition is a family tag for what loads and an item for what the weapon's own round is |
 | D-0009 | Bullets bypass the hurt cooldown, push by a shared-out knockback, and a round may change what a weapon fires |
 | D-0010 | Grip is optional synchronized profile data, independent of combat class |
+| D-0011 | Bullets break only glass and lanterns; every other block cracks and stands |

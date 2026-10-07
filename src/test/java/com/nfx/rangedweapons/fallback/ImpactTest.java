@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Partitions:
  *   bulletproof: hardness negative / NaN / zero / below ceiling / at ceiling / above
  *   health:      hardness zero / positive; perHardness invalid
- *   crackStage:  dealt zero / a tenth / just under health / rounding at the top; invalid inputs
+ *   crackStage:  dealt zero / a tenth / just under health / at health / rounding at the top; invalid inputs
  *   remembered:  within window / at the edge / past it / time backwards
  *   breakerId:   negative for every key; equal keys equal ids; a real spread of ids
  * Worked numbers at the shipped defaults (15 per hardness, ceiling 20), so a
@@ -71,11 +71,10 @@ class ImpactTest {
     }
 
     @Test
-    void shippedNumbersGiveTheIntendedHitCounts() {
+    void shippedNumbersPaceTheCracks() {
         float round = 5.0f;
-        assertEquals(1, hitsToBreak(Impact.health(0.3f, 15.0f), round), "glass in one");
-        assertEquals(5, hitsToBreak(Impact.health(1.5f, 15.0f), round), "stone in five");
-        assertEquals(15, hitsToBreak(Impact.health(5.0f, 15.0f), round), "an iron block in fifteen");
+        assertEquals(5, hitsToFull(Impact.health(1.5f, 15.0f), round), "stone in five");
+        assertEquals(15, hitsToFull(Impact.health(5.0f, 15.0f), round), "an iron block in fifteen");
     }
 
     @Test
@@ -85,11 +84,11 @@ class ImpactTest {
         assertEquals(1, Impact.crackStage(1.0f, 10.0f));
         assertEquals(5, Impact.crackStage(5.0f, 10.0f));
         assertEquals(9, Impact.crackStage(9.99f, 10.0f), "never past the last texture");
+        assertEquals(9, Impact.crackStage(10.0f, 10.0f), "at health: the last stage, which never breaks");
     }
 
     @Test
     void crackStageRejectsBadInputs() {
-        assertThrows(IllegalArgumentException.class, () -> Impact.crackStage(10.0f, 10.0f), "dealt at health is a break, not a stage");
         assertThrows(IllegalArgumentException.class, () -> Impact.crackStage(-1.0f, 10.0f));
         assertThrows(IllegalArgumentException.class, () -> Impact.crackStage(0.0f, 0.0f));
     }
@@ -112,7 +111,7 @@ class ImpactTest {
         assertTrue(Impact.breakerId(1L) != Impact.breakerId(2L), "neighbouring keys differ");
     }
 
-    private static int hitsToBreak(float health, float damage) {
+    private static int hitsToFull(float health, float damage) {
         int hits = 0;
         float dealt = 0.0f;
         while (dealt < health) {

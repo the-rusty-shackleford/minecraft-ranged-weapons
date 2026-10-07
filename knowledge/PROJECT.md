@@ -41,6 +41,10 @@ same bounds, so a bad datapack is refused at load naming the field.
 
 ## How it is verified
 
+1.8.0 (2026-10-07, D-0011): bullets break only glass and lanterns; every other block
+cracks and stands. Built and gated; to ship nested in Ranged Weapons Mod 2.13.0, in
+pack 1.76.0, on Rusty's "Build it, test and confirm it, then release everything".
+
 1.7.0 is local and unreleased (2026-09-16): optional synchronized grip data,
 with the previous constructor retained for providers (D-0010). No release go.
 

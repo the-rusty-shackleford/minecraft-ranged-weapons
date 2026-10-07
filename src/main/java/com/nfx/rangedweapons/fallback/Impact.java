@@ -46,21 +46,22 @@ import java.util.WeakHashMap;
 
 /**
  * What a bullet does to the block it hits: debris and a sound for every
- * hit, and, for shooters allowed to, damage that accumulates until the
- * block breaks.
+ * hit, and, for shooters allowed to, either a shattering or cracks.
  *
  * <p>The rules are pure functions over numbers and are unit tested; the
  * effects are one method, {@link #hit}, and are gametested.
  *
- * <p>A block's health is its hardness times {@code healthPerHardness}
- * (config), so the numbers the game already has decide: glass at 0.3
- * shatters at one round of five, stone at 1.5 takes five, an iron block at
- * 5 fourteen. Blocks at or above {@code bulletproofHardness} (config; 20 by
- * default: obsidian, ancient debris, netherite, an ender chest) and every
- * block with negative hardness (bedrock, command blocks) are immune, as is
- * anything in {@code #rangedweapons:bulletproof}. Anything in
- * {@code #rangedweapons:shatters} -- glass, panes, ice -- breaks on any
- * hit whatever its hardness.
+ * <p>Only what is in {@code #rangedweapons:shatters} -- glass, panes,
+ * lanterns and lamps -- ever breaks, on the first hit whatever its hardness
+ * (D-0011). Everything else cracks and stands: a block's health is its
+ * hardness times {@code healthPerHardness} (config), the damage that brings
+ * it to the last crack stage, so the numbers the game already has pace the
+ * cracks: stone at 1.5 shows the last at five rounds of five, an iron block
+ * at 5 at fifteen. A block with no hardness shows none. Blocks at or above
+ * {@code bulletproofHardness} (config; 20 by default: obsidian, ancient
+ * debris, netherite, an ender chest) and every block with negative hardness
+ * (bedrock, command blocks) are immune, as is anything in
+ * {@code #rangedweapons:bulletproof}.
  *
  * <p>Damage is remembered per block position for {@link #HEAL_TICKS} after
  * the last hit, which is how long the client keeps a crack it was last
@@ -79,7 +80,7 @@ public final class Impact {
 
     /** Blocks no bullet breaks, beyond what hardness already excludes. */
     public static final TagKey<Block> BULLETPROOF = BlockTags.create(RangedWeapons.id("bulletproof"));
-    /** Blocks any hit breaks: glass and its kind. */
+    /** The only blocks a bullet breaks, on any hit: glass and its kind. */
     public static final TagKey<Block> SHATTERS = BlockTags.create(RangedWeapons.id("shatters"));
 
     private static final int DEBRIS_COUNT = 8;
@@ -106,8 +107,8 @@ public final class Impact {
 
     /**
      * requires: {@code hardness >= 0}, {@code perHardness > 0}<br>
-     * effects: returns the bullet damage a block of {@code hardness} takes
-     * before it breaks
+     * effects: returns the bullet damage that brings a block of
+     * {@code hardness} to its last crack stage
      */
     public static float health(float hardness, float perHardness) {
         if (!(hardness >= 0.0f) || !(perHardness > 0.0f)) {
@@ -118,13 +119,14 @@ public final class Impact {
     }
 
     /**
-     * requires: {@code health > 0}, {@code 0 <= dealt < health}<br>
+     * requires: {@code health > 0}, {@code dealt >= 0}<br>
      * effects: returns the crack stage, 0 to 9, that shows {@code dealt} of
-     * {@code health}: the tenth of the way to breaking the block has come
+     * {@code health}: the tenth of the way to {@code health} that has come,
+     * the last stage from nine tenths on
      */
     public static int crackStage(float dealt, float health) {
-        if (!(health > 0.0f) || !(dealt >= 0.0f) || dealt >= health) {
-            throw new IllegalArgumentException("need 0 <= dealt < health, were " + dealt + " and " + health);
+        if (!(health > 0.0f) || !(dealt >= 0.0f)) {
+            throw new IllegalArgumentException("need health > 0 and dealt >= 0, were " + dealt + " and " + health);
         }
         return Math.min(CRACK_STAGES - 1, (int) (dealt / health * CRACK_STAGES));
     }
@@ -171,11 +173,10 @@ public final class Impact {
      * plays its hit sound; then, if {@code bullet}'s owner may break blocks
      * here (config policy, spawn protection, the block-break event for a
      * player, the {@code mobGriefing} rule for a mob) and the block is not
-     * bulletproof, adds the bullet's damage to what the block remembers,
-     * and either breaks the block -- destroyed, not mined: it drops nothing,
-     * though a container still spills what it held, as one does when
-     * removed by any means -- or shows the crack stage reached. Nothing for
-     * air.
+     * bulletproof, either breaks a block that shatters -- destroyed, not
+     * mined: it drops nothing -- or adds the bullet's damage to what any
+     * other block remembers, up to its health, and shows the crack stage
+     * reached; that block never breaks. Nothing for air.
      *
      * @param level  the server level the hit is in
      * @param bullet the bullet, for its damage and owner
@@ -197,20 +198,22 @@ public final class Impact {
         if (state.is(BULLETPROOF) || bulletproof(hardness, RangedWeaponsConfig.BULLETPROOF_HARDNESS.get().floatValue())) {
             return;
         }
-        float health = state.is(SHATTERS) ? 0.0f
-                : health(hardness, RangedWeaponsConfig.HEALTH_PER_HARDNESS.get().floatValue());
         long key = pos.asLong();
-        long now = level.getGameTime();
         Long2ObjectOpenHashMap<Hit> ledger = ledger(level);
-        Hit prior = ledger.get(key);
-        float dealt = (prior == null ? 0.0f : remembered(prior.dealt(), prior.tick(), now, HEAL_TICKS)) + bullet.damage();
-
-        if (dealt >= health) {
+        if (state.is(SHATTERS)) {
             ledger.remove(key);
             level.destroyBlockProgress(breakerId(key), pos, -1);
             level.destroyBlock(pos, false, owner);
             return;
         }
+        if (!(hardness > 0.0f)) {
+            return;
+        }
+        float health = health(hardness, RangedWeaponsConfig.HEALTH_PER_HARDNESS.get().floatValue());
+        long now = level.getGameTime();
+        Hit prior = ledger.get(key);
+        float dealt = Math.min(health,
+                (prior == null ? 0.0f : remembered(prior.dealt(), prior.tick(), now, HEAL_TICKS)) + bullet.damage());
         if (ledger.size() > PRUNE_ABOVE) {
             ledger.values().removeIf(h -> remembered(h.dealt(), h.tick(), now, HEAL_TICKS) == 0.0f);
         }

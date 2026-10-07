@@ -40,16 +40,17 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
  * What the fallback bullet does to blocks, on a real server, under the
- * shipped defaults: a player's round shatters glass at once, takes stone
- * down over several, and never marks obsidian; the shatters tag makes ice
- * go in one; a mob's round leaves glass standing under the default
- * players-only policy.
+ * shipped defaults (D-0011): a player's round shatters glass and a lantern
+ * at once, leaving nothing behind; everything else only cracks, however
+ * many rounds it takes -- stone, ice, a block with no hardness at all -- and
+ * obsidian is never marked; a mob's round leaves glass standing under the
+ * default players-only policy.
  *
  * <p>The shooter is a mock player (a {@code Player} with no connection,
  * which the rules admit without the block-break event) or an armor stand
  * for a mob. The stick profile in this mod's test data map deals 5 a
- * round, so glass (0.3 hardness, 4.5 health) is one round, stone (1.5,
- * 22.5) is five, and ice (0.5, 7.5) would be two but for the tag.
+ * round, so stone (1.5 hardness, 22.5 health) shows its last crack at the
+ * fifth round, which used to break it; eight rounds are fired.
  *
  * <p>Not tested here: the {@code EVERYONE} and {@code NOBODY} policies.
  * Tests run concurrently in one server, and the policy is one common
@@ -79,11 +80,15 @@ public final class ImpactGameTests {
         helper.succeedWhen(() -> helper.assertBlockPresent(Blocks.AIR, TARGET));
     }
 
-    @GameTest(template = "arena", timeoutTicks = 60)
-    public void aBlockShotToPiecesDropsNothing(GameTestHelper helper) {
-        Player shooter = arena(helper, Blocks.DIRT);          // 0.5 hardness, 7.5 health: two rounds; drops itself when mined
-        shots(helper, shooter, 2);
-        helper.runAtTickTime(2 * SHOT_INTERVAL + 4, () -> {
+    @GameTest(template = "arena", timeoutTicks = 40)
+    public void aLanternShattersOnOneRoundAndDropsNothing(GameTestHelper helper) {
+        // Standing on a block, as a lantern must; aimed at its body, which is
+        // the lower half of the block. Mined, a lantern drops itself.
+        Player shooter = arena(helper, Blocks.LANTERN);
+        helper.setBlock(TARGET.below(), Blocks.SMOOTH_STONE);
+        Vec3 body = Vec3.atBottomCenterOf(TARGET).add(0.0, 0.2, 0.0);
+        fire(helper, shooter, body);
+        helper.runAtTickTime(6, () -> {
             helper.assertBlockPresent(Blocks.AIR, TARGET);
             helper.assertEntityNotPresent(EntityType.ITEM);
             helper.succeed();
@@ -91,19 +96,26 @@ public final class ImpactGameTests {
     }
 
     @GameTest(template = "arena", timeoutTicks = 60)
-    public void stoneStandsThroughFourRoundsAndFallsToTheFifth(GameTestHelper helper) {
+    public void stoneCracksButStandsThroughEightRounds(GameTestHelper helper) {
         Player shooter = arena(helper, Blocks.STONE);
-        shots(helper, shooter, 4);
-        int settled = 4 * SHOT_INTERVAL + 4;
-        helper.runAtTickTime(settled, () -> {
+        shots(helper, shooter, 8);
+        helper.runAtTickTime(8 * SHOT_INTERVAL + 4, () -> {
             helper.assertEntityNotPresent(Fallback.BULLET.get());
             helper.assertBlockPresent(Blocks.STONE, TARGET);
-            fire(helper, shooter);
-        });
-        helper.runAtTickTime(settled + 4, () -> {
-            helper.assertBlockPresent(Blocks.AIR, TARGET);
-            // Destroyed, not mined: stone shot to pieces yields no cobblestone.
             helper.assertEntityNotPresent(EntityType.ITEM);
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = "arena", timeoutTicks = 60)
+    public void aBlockWithNoHardnessStands(GameTestHelper helper) {
+        // Slime: hardness 0 and a full collision box. Its health was 0, so
+        // the first round used to take it.
+        Player shooter = arena(helper, Blocks.SLIME_BLOCK);
+        shots(helper, shooter, 3);
+        helper.runAtTickTime(3 * SHOT_INTERVAL + 4, () -> {
+            helper.assertEntityNotPresent(Fallback.BULLET.get());
+            helper.assertBlockPresent(Blocks.SLIME_BLOCK, TARGET);
             helper.succeed();
         });
     }
@@ -119,11 +131,15 @@ public final class ImpactGameTests {
         });
     }
 
-    @GameTest(template = "arena", timeoutTicks = 40)
-    public void iceShattersOnOneRoundByTag(GameTestHelper helper) {
+    @GameTest(template = "arena", timeoutTicks = 60)
+    public void iceIsNotGlassAndStands(GameTestHelper helper) {
         Player shooter = arena(helper, Blocks.ICE);
-        shots(helper, shooter, 1);
-        helper.succeedWhen(() -> helper.assertBlockPresent(Blocks.AIR, TARGET));
+        shots(helper, shooter, 3);
+        helper.runAtTickTime(3 * SHOT_INTERVAL + 4, () -> {
+            helper.assertEntityNotPresent(Fallback.BULLET.get());
+            helper.assertBlockPresent(Blocks.ICE, TARGET);
+            helper.succeed();
+        });
     }
 
     @GameTest(template = "arena", timeoutTicks = 40)
@@ -170,13 +186,18 @@ public final class ImpactGameTests {
 
     /** One round from just in front of the shooter's eye at the target block's centre. */
     private static void fire(GameTestHelper helper, LivingEntity shooter) {
+        fire(helper, shooter, Vec3.atCenterOf(TARGET));
+    }
+
+    /** One round from just in front of the shooter's eye at {@code at}, relative to the test. */
+    private static void fire(GameTestHelper helper, LivingEntity shooter, Vec3 at) {
         ItemStack stack = new ItemStack(Items.STICK);
         RangedWeapon weapon = RangedWeapons.resolve(stack);
         if (weapon == null) {
             helper.fail("no profile for the stick: the gametest data map did not load");
             return;
         }
-        Vec3 aim = helper.absoluteVec(Vec3.atCenterOf(TARGET)).subtract(shooter.getEyePosition());
+        Vec3 aim = helper.absoluteVec(at).subtract(shooter.getEyePosition());
         Vec3 origin = shooter.getEyePosition().add(aim.normalize().scale(MUZZLE_OFFSET));
         weapon.fire(helper.getLevel(), shooter, stack, Shot.of(weapon.stats(stack), origin, aim));
     }
